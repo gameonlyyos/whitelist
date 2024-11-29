@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NekoAirdrop Token Claim</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 350px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #status {
+            margin-top: 15px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NekoAirdrop Token Claim</h1>
+        <button id="connectWallet">Connect Wallet</button>
+        <button id="claimTokens" style="display:none;">Claim Tokens</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Kontrak NekoAirdrop
+        const contractAddress = '0x5536102feB94bBaf5DeCDcc9edc4b02144214d53';
+        const contractABI = [
+            {
+                "inputs": [],
+                "name": "claimTokens",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "",
+                        "type": "address"
+                    }
+                ],
+                "name": "hasClaimed",
+                "outputs": [
+                    {
+                        "internalType": "bool",
+                        "name": "",
+                        "type": "bool"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        let web3;
+        let contract;
+        let userAccount;
+
+        const connectWalletBtn = document.getElementById('connectWallet');
+        const claimTokensBtn = document.getElementById('claimTokens');
+        const statusDiv = document.getElementById('status');
+
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    // Request account access
+                    web3 = new Web3(window.ethereum);
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    
+                    userAccount = accounts[0];
+                    contract = new web3.eth.Contract(contractABI, contractAddress);
+
+                    // Periksa apakah sudah pernah claim
+                    const hasClaimed = await contract.methods.hasClaimed(userAccount).call();
+                    
+                    connectWalletBtn.style.display = 'none';
+                    claimTokensBtn.style.display = 'block';
+                    
+                    if (hasClaimed) {
+                        statusDiv.textContent = 'Anda sudah pernah melakukan claim';
+                        claimTokensBtn.disabled = true;
+                    } else {
+                        statusDiv.textContent = `Terhubung: ${userAccount}`;
+                    }
+                } catch (error) {
+                    statusDiv.textContent = 'Gagal terhubung: ' + error.message;
+                    console.error(error);
+                }
+            } else {
+                statusDiv.textContent = 'MetaMask tidak terdeteksi';
+            }
+        }
+
+        async function claimTokens() {
+            if (!contract) {
+                statusDiv.textContent = 'Silakan hubungkan wallet terlebih dahulu';
+                return;
+            }
+
+            try {
+                await contract.methods.claimTokens().send({ from: userAccount });
+                statusDiv.textContent = 'Token berhasil diklaim!';
+                claimTokensBtn.disabled = true;
+            } catch (error) {
+                statusDiv.textContent = 'Klaim token gagal: ' + error.message;
+                console.error(error);
+            }
+        }
+
+        connectWalletBtn.addEventListener('click', connectWallet);
+        claimTokensBtn.addEventListener('click', claimTokens);
+
+        // Deteksi perubahan akun MetaMask
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                window.location.reload();
+            });
+        }
+    </script>
+</body>
+</html>
