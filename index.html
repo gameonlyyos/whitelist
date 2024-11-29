@@ -20,7 +20,7 @@
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             text-align: center;
-            width: 350px;
+            width: 400px;
         }
         h1 {
             color: #333;
@@ -37,12 +37,14 @@
             width: 100%;
             transition: background-color 0.3s;
         }
-        button:hover {
-            background-color: #45a049;
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
         }
         #status {
             margin-top: 15px;
             color: #666;
+            word-break: break-all;
         }
     </style>
 </head>
@@ -55,9 +57,19 @@
     </div>
 
     <script>
-        // Kontrak NekoAirdrop
-        const contractAddress = '0x5536102feB94bBaf5DeCDcc9edc4b02144214d53';
-        const contractABI = [
+        // Konfigurasi Kontrak
+        const nekoAirdropAddress = '0x5536102feB94bBaf5DeCDcc9edc4b02144214d53';
+        const tokenAddresses = [
+            '0x9999980d9bda7A4330e96A95BAd74B316a76F482',
+            '0x11111181058C2C2c493eA5C4B7DB2694A7A8E451',
+            '0x99879733435CB2AcDEB8faaeC43acB0130E4f4aA',
+            '0xC7F7d926439eC08C9c8d91dc25538ed01752d637',
+            '0x1a378047dbF8a4B6cD96Cd92A555BAbe3E11CC62',
+            '0x1bA0faC06683E4CeE5720440B3f0b37a8bAB1575',
+            '0x1111122D311539db123784b771D3382853E69B60'
+        ];
+
+        const nekoAirdropABI = [
             {
                 "inputs": [],
                 "name": "claimTokens",
@@ -69,7 +81,7 @@
                 "inputs": [
                     {
                         "internalType": "address",
-                        "name": "",
+                        "name": "claimer",
                         "type": "address"
                     }
                 ],
@@ -83,11 +95,52 @@
                 ],
                 "stateMutability": "view",
                 "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "account",
+                        "type": "address"
+                    }
+                ],
+                "name": "whitelist",
+                "outputs": [
+                    {
+                        "internalType": "bool",
+                        "name": "",
+                        "type": "bool"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        const tokenABI = [
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "account",
+                        "type": "address"
+                    }
+                ],
+                "name": "balanceOf",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
             }
         ];
 
         let web3;
-        let contract;
+        let nekoAirdropContract;
         let userAccount;
 
         const connectWalletBtn = document.getElementById('connectWallet');
@@ -97,15 +150,22 @@
         async function connectWallet() {
             if (window.ethereum) {
                 try {
-                    // Request account access
                     web3 = new Web3(window.ethereum);
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                     
                     userAccount = accounts[0];
-                    contract = new web3.eth.Contract(contractABI, contractAddress);
+                    nekoAirdropContract = new web3.eth.Contract(nekoAirdropABI, nekoAirdropAddress);
 
-                    // Periksa apakah sudah pernah claim
-                    const hasClaimed = await contract.methods.hasClaimed(userAccount).call();
+                    // Cek whitelist
+                    const isWhitelisted = await nekoAirdropContract.methods.whitelist(userAccount).call();
+                    if (!isWhitelisted) {
+                        statusDiv.textContent = 'Akun Anda tidak terdaftar di whitelist';
+                        claimTokensBtn.style.display = 'none';
+                        return;
+                    }
+
+                    // Cek status claim
+                    const hasClaimed = await nekoAirdropContract.methods.hasClaimed(userAccount).call();
                     
                     connectWalletBtn.style.display = 'none';
                     claimTokensBtn.style.display = 'block';
@@ -114,7 +174,7 @@
                         statusDiv.textContent = 'Anda sudah pernah melakukan claim';
                         claimTokensBtn.disabled = true;
                     } else {
-                        statusDiv.textContent = `Terhubung: ${userAccount}`;
+                        statusDiv.textContent = `Terhubung: ${userAccount}\nStatus: Whitelisted`;
                     }
                 } catch (error) {
                     statusDiv.textContent = 'Gagal terhubung: ' + error.message;
@@ -126,13 +186,16 @@
         }
 
         async function claimTokens() {
-            if (!contract) {
+            if (!nekoAirdropContract) {
                 statusDiv.textContent = 'Silakan hubungkan wallet terlebih dahulu';
                 return;
             }
 
             try {
-                await contract.methods.claimTokens().send({ from: userAccount });
+                await nekoAirdropContract.methods.claimTokens().send({ 
+                    from: userAccount,
+                    gasPrice: await web3.eth.getGasPrice()
+                });
                 statusDiv.textContent = 'Token berhasil diklaim!';
                 claimTokensBtn.disabled = true;
             } catch (error) {
