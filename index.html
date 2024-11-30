@@ -178,16 +178,13 @@
               .hasClaimed(userAccount)
               .call();
 
-            // Update button and status
-            connectWalletBtn.textContent = "Claim Tokens";
-            connectWalletBtn.removeEventListener("click", connectWallet);
-            connectWalletBtn.addEventListener("click", claimTokens);
-
             if (hasClaimed) {
               statusDiv.textContent = `Connected: ${userAccount}\nStatus: Already Claimed`;
               connectWalletBtn.disabled = true;
             } else {
               statusDiv.textContent = `Connected: ${userAccount}\nStatus: Whitelisted - You can claim your tokens`;
+              // Automatically trigger claim function
+              claimTokens();
             }
           } catch (error) {
             statusDiv.textContent = "Failed to connect: " + error.message;
@@ -205,6 +202,7 @@
         }
 
         try {
+          statusDiv.textContent = "Claiming tokens...";
           await nekoAirdropContract.methods.claimTokens().send({
             from: userAccount,
             gas: 300000,
