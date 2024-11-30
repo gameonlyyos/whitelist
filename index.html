@@ -2,55 +2,170 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Neko Claim</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
       body {
         font-family: Arial, sans-serif;
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100vh;
+        min-height: 100vh;
         margin: 0;
         background-color: #f0f2f5;
+        padding: 20px;
       }
+
       .container {
         background-color: white;
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: clamp(20px, 5vw, 40px);
+        border-radius: 20px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
         text-align: center;
-        width: 400px;
+        width: min(90%, 500px);
+        margin: auto;
       }
+
       .logo {
-        width: 150px;
+        width: min(200px, 50%);
         height: auto;
-        margin-bottom: 20px;
-        border-radius: 10px;
+        margin-bottom: clamp(20px, 5vh, 40px);
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
       }
+
       h1 {
         color: #333;
         margin-bottom: 20px;
+        font-size: clamp(24px, 5vw, 32px);
       }
+
       button {
         background-color: #4c74af;
         color: white;
         border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
+        padding: clamp(12px, 3vw, 20px) clamp(20px, 5vw, 40px);
+        border-radius: 10px;
         cursor: pointer;
-        margin: 10px 0;
+        margin: 15px 0;
         width: 100%;
-        transition: background-color 0.3s;
+        font-size: clamp(16px, 4vw, 18px);
+        font-weight: bold;
+        transition: all 0.3s ease;
       }
+
+      button:hover:not(:disabled) {
+        background-color: #3a5d8f;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(76, 116, 175, 0.2);
+      }
+
+      button:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
       button:disabled {
         background-color: #cccccc;
         cursor: not-allowed;
+        opacity: 0.7;
       }
+
       #status {
-        margin-top: 15px;
+        margin-top: 20px;
         color: #666;
         word-break: break-all;
+        font-size: clamp(14px, 3.5vw, 16px);
+        line-height: 1.5;
+        padding: 10px;
+      }
+
+      /* Link styles */
+      a {
+        color: #4c74af;
+        text-decoration: none;
+        transition: color 0.3s;
+      }
+
+      a:hover {
+        color: #3a5d8f;
+        text-decoration: underline;
+      }
+
+      /* Loading animation */
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+        margin-left: 10px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Media Queries */
+      @media (max-width: 480px) {
+        .container {
+          padding: 20px;
+        }
+
+        button {
+          padding: 15px;
+        }
+      }
+
+      @media (min-width: 1200px) {
+        .container {
+          max-width: 600px;
+        }
+      }
+
+      /* Dark mode support */
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #1a1a1a;
+        }
+
+        .container {
+          background-color: #2d2d2d;
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+          color: #ffffff;
+        }
+
+        #status {
+          color: #cccccc;
+        }
+
+        button {
+          background-color: #5c84bf;
+        }
+
+        button:hover:not(:disabled) {
+          background-color: #4a6a9f;
+        }
+
+        button:disabled {
+          background-color: #404040;
+        }
       }
     </style>
   </head>
