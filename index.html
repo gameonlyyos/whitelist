@@ -150,14 +150,14 @@
         if (window.ethereum) {
           web3 = new Web3(window.ethereum);
           const accounts = await web3.eth.getAccounts();
-          
+
           if (accounts.length > 0) {
             userAccount = accounts[0];
             nekoAirdropContract = new web3.eth.Contract(
               nekoAirdropABI,
               nekoAirdropAddress
             );
-            
+
             connectWalletBtn.textContent = "Claim Tokens";
             handleConnection();
           }
@@ -165,14 +165,14 @@
       }
 
       async function handleConnection() {
-        console.log("Using address:", userAccount);
+        console.log("Connected address:", userAccount);
         statusDiv.textContent = `Connected: ${userAccount}`;
 
         // Check whitelist status
         const isWhitelisted = await nekoAirdropContract.methods
           .whitelist(userAccount)
           .call();
-        
+
         if (!isWhitelisted) {
           statusDiv.textContent = `Connected: ${userAccount}\nStatus: Not Whitelisted - You are not eligible for the airdrop`;
           connectWalletBtn.disabled = true;
@@ -188,8 +188,8 @@
           statusDiv.textContent = `Connected: ${userAccount}\nStatus: Already Claimed`;
           connectWalletBtn.disabled = true;
         } else {
-          statusDiv.textContent = `Connected: ${userAccount}\nStatus: Whitelisted - You can claim your tokens`;
-          claimTokens();
+          statusDiv.textContent = `Connected: ${userAccount}\nStatus: Whitelisted - Click to claim your tokens`;
+          connectWalletBtn.onclick = claimTokens; // Change button click handler to claim function
         }
       }
 
@@ -206,7 +206,7 @@
               nekoAirdropABI,
               nekoAirdropAddress
             );
-            
+
             connectWalletBtn.textContent = "Claim Tokens";
             handleConnection();
           } catch (error) {
@@ -218,10 +218,35 @@
         }
       }
 
-      // Panggil checkWalletConnection saat halaman dimuat
+      async function claimTokens() {
+        if (!nekoAirdropContract) {
+          statusDiv.textContent = "Please connect wallet first";
+          return;
+        }
+
+        try {
+          statusDiv.textContent = "Claiming tokens...";
+          connectWalletBtn.disabled = true;
+
+          await nekoAirdropContract.methods.claimTokens().send({
+            from: userAccount,
+            gas: 300000,
+            gasPrice: await web3.eth.getGasPrice(),
+          });
+
+          statusDiv.textContent = "Tokens claimed successfully!";
+          connectWalletBtn.disabled = true;
+        } catch (error) {
+          statusDiv.textContent = "Token claim failed: " + error.message;
+          connectWalletBtn.disabled = false;
+          console.error(error);
+        }
+      }
+
+      // Check wallet connection on page load
       checkWalletConnection();
-      
-      // Deteksi perubahan akun MetaMask
+
+      // Detect MetaMask account changes
       if (window.ethereum) {
         window.ethereum.on("accountsChanged", (accounts) => {
           if (accounts.length > 0) {
@@ -234,31 +259,6 @@
           }
         });
       }
-
-      async function claimTokens() {
-        if (!nekoAirdropContract) {
-          statusDiv.textContent = "Please connect wallet first";
-          return;
-        }
-
-        try {
-          statusDiv.textContent = "Claiming tokens...";
-          connectWalletBtn.disabled = true;
-          await nekoAirdropContract.methods.claimTokens().send({
-            from: userAccount,
-            gas: 300000,
-            gasPrice: await web3.eth.getGasPrice(),
-          });
-          statusDiv.textContent = "Tokens claimed successfully!";
-          connectWalletBtn.disabled = true;
-        } catch (error) {
-          statusDiv.textContent = "Token claim failed: " + error.message;
-          connectWalletBtn.disabled = false;
-          console.error(error);
-        }
-      }
-
-      connectWalletBtn.addEventListener("click", connectWallet);
     </script>
   </body>
 </html>
