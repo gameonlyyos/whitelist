@@ -193,9 +193,21 @@
         }
       }
 
+      connectWalletBtn.onclick = connectWallet;
+
       async function connectWallet() {
         if (window.ethereum) {
           try {
+            // Tambahkan request eksplisit untuk membuka MetaMask
+            await window.ethereum.request({
+              method: "wallet_requestPermissions",
+              params: [
+                {
+                  eth_accounts: {},
+                },
+              ],
+            });
+
             web3 = new Web3(window.ethereum);
             const accounts = await window.ethereum.request({
               method: "eth_requestAccounts",
@@ -214,7 +226,8 @@
             console.error(error);
           }
         } else {
-          statusDiv.textContent = "MetaMask not detected";
+          statusDiv.textContent =
+            "MetaMask tidak terdeteksi. Silakan install MetaMask terlebih dahulu.";
         }
       }
 
