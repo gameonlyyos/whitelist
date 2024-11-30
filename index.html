@@ -64,7 +64,7 @@
 
     <script>
       // Konfigurasi Kontrak
-      const nekoAirdropAddress = "0x63a8E62B8C0A11780d6408fAbf53cED88848D9e8";
+      const nekoAirdropAddress = "0x9fd1aC6A298D4BF04e169B4d50Cc26921757F8FB";
       const tokenAddresses = [
         "0x9999980d9bda7A4330e96A95BAd74B316a76F482",
         "0x11111181058C2C2c493eA5C4B7DB2694A7A8E451",
@@ -175,16 +175,6 @@
         console.log("Connected address:", userAccount);
         statusDiv.textContent = `Connected: ${userAccount}`;
 
-        const isWhitelisted = await nekoAirdropContract.methods
-          .whitelist(userAccount)
-          .call();
-
-        if (!isWhitelisted) {
-          statusDiv.textContent = `${userAccount}\n\nNot Whitelisted - You are not eligible for the airdrop`;
-          connectWalletBtn.disabled = true;
-          return;
-        }
-
         const hasClaimed = await nekoAirdropContract.methods
           .hasClaimed(userAccount)
           .call();
@@ -192,7 +182,7 @@
           statusDiv.textContent = `${userAccount}\n\nAlready Claimed`;
           connectWalletBtn.disabled = true;
         } else {
-          statusDiv.textContent = `${userAccount}\n\nWhitelisted - Click to claim your tokens`;
+          statusDiv.textContent = `${userAccount}\n\nClick to claim your tokens`;
           connectWalletBtn.onclick = claimTokens;
         }
       }
