@@ -32,8 +32,8 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 20px;
         margin: 0;
+        padding: 20px;
       }
 
       @keyframes gradientBG {
@@ -59,23 +59,15 @@
         width: 100%;
         max-width: 500px;
         text-align: center;
-        position: relative;
-        z-index: 1;
-        transform: translateZ(0); /* Hardware acceleration */
-        backface-visibility: hidden; /* Prevent flickering */
-        -webkit-backface-visibility: hidden;
-        animation: containerAppear 1s ease-out;
       }
 
-      @keyframes containerAppear {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+      /* Tambahkan style untuk wrapper div */
+      .claim-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
       }
 
       /* Logo container and animation styles */
@@ -143,46 +135,12 @@
         background: linear-gradient(45deg, #7f00ff, #e100ff);
         color: white;
         border: none;
-        padding: 14px 28px;
+        padding: 12px 24px;
         border-radius: 12px;
         font-weight: 600;
-        font-size: 1rem;
         cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-        margin: 10px 0;
-        width: 100%;
-        max-width: 300px;
-        transform: translateZ(0);
-        -webkit-appearance: none; /* Remove default styles on iOS */
-        -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-      }
-
-      button::before {
-        content: "";
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: linear-gradient(
-          45deg,
-          transparent,
-          rgba(255, 255, 255, 0.2),
-          transparent
-        );
-        transform: rotate(45deg);
-        animation: buttonShine 3s infinite;
-      }
-
-      @keyframes buttonShine {
-        0% {
-          transform: translateX(-100%) rotate(45deg);
-        }
-        100% {
-          transform: translateX(100%) rotate(45deg);
-        }
+        transition: transform 0.2s, box-shadow 0.2s;
+        width: 200px; /* Fixed width untuk konsistensi */
       }
 
       button:hover {
@@ -190,8 +148,9 @@
         box-shadow: 0 5px 15px rgba(127, 0, 255, 0.3);
       }
 
-      button:active {
-        transform: translateY(1px); /* Subtle press effect */
+      button:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
       }
 
       /* Status container */
@@ -313,18 +272,50 @@
           opacity: 1;
         }
       }
+
+      .status-item.success {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid #10b981;
+        padding: 12px;
+        border-radius: 8px;
+        margin: 8px 0;
+      }
+
+      .status-item.error {
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid #ef4444;
+        padding: 12px;
+        border-radius: 8px;
+        margin: 8px 0;
+      }
+
+      /* Style untuk status text */
+      p {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 12px;
+        border-radius: 8px;
+        margin: 8px 0;
+        width: 100%;
+        max-width: 400px;
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="logo-container">
-        <img src="logo.png" alt="NEKO Token" class="neko-logo" />
+      <div class="claim-wrapper">
+        <div class="logo-container">
+          <img src="logo.png" alt="NEKO Token" class="neko-logo" />
+        </div>
+        <h1>NEKO CLAIM</h1>
+        <p>✨ Get 10 NEKO tokens for free! ✨</p>
+        <div id="status"></div>
+        <button id="connectWalletBtn">🦊 Connect MetaMask</button>
+        <button id="claimTokensBtn" style="display: none">
+          🎁 Claim Tokens
+        </button>
       </div>
-      <h1>NEKO CLAIM</h1>
-      <p>✨ Get 10 NEKO tokens for free! ✨</p>
-      <div id="status"></div>
-      <button id="connectWalletBtn">🦊 Connect MetaMask</button>
-      <button id="claimTokensBtn" style="display: none">🎁 Claim Tokens</button>
     </div>
 
     <script>
@@ -385,30 +376,69 @@
       let contract;
       let userAccount;
 
-      async function connectWallet() {
+      // Tambahkan array whitelist addresses
+      const whitelistAddresses = [
+        "0x0cE353584C9DD5D014810DBb6079721ba556E427",
+        "0x9999980d9bda7A4330e96A95BAd74B316a76F482",
+        "0x11111181058C2C2c493eA5C4B7DB2694A7A8E451",
+        "0x99879733435CB2AcDEB8faaeC43acB0130E4f4aA",
+        "0xC7F7d926439eC08C9c8d91dc25538ed01752d637",
+        "0x1a378047dbF8a4B6cD96Cd92A555BAbe3E11CC62",
+        "0x1bA0faC06683E4CeE5720440B3f0b37a8bAB1575",
+        "0x1111122D311539db123784b771D3382853E69B60",
+      ];
+
+      // Tambahkan fungsi untuk mengecek whitelist
+      async function checkWhitelist(address) {
         try {
-          // Check if MetaMask is installed
-          if (typeof window.ethereum !== "undefined") {
-            // Request account access
+          const isWhitelisted = whitelistAddresses.includes(
+            address.toLowerCase()
+          );
+          const statusDiv = document.getElementById("status");
+
+          if (isWhitelisted) {
+            statusDiv.innerHTML += `
+              <div class="status-item success">
+                <span>Whitelist Status:</span>
+                <span>✅ Your address is whitelisted</span>
+              </div>
+            `;
+            document.getElementById("claimTokensBtn").style.display = "block";
+          } else {
+            statusDiv.innerHTML += `
+              <div class="status-item error">
+                <span>Whitelist Status:</span>
+                <span>❌ Your address is not whitelisted</span>
+              </div>
+            `;
+            document.getElementById("claimTokensBtn").style.display = "none";
+          }
+          return isWhitelisted;
+        } catch (error) {
+          console.error("Error checking whitelist:", error);
+          return false;
+        }
+      }
+
+      // Modifikasi fungsi connectWallet untuk memanggil checkWhitelist
+      async function connectWallet() {
+        if (typeof window.ethereum !== "undefined") {
+          try {
             const accounts = await window.ethereum.request({
               method: "eth_requestAccounts",
             });
             userAccount = accounts[0];
 
-            // Initialize Web3
-            web3 = new Web3(window.ethereum);
-            contract = new web3.eth.Contract(nekoAirdropABI, contractAddress);
-
-            // Update UI
             document.getElementById("connectWalletBtn").style.display = "none";
-            document.getElementById("claimTokensBtn").style.display = "block";
 
-            // Show wallet status
+            // Update status dan cek whitelist
             updateStatus();
+            await checkWhitelist(userAccount);
+          } catch (error) {
+            showError("Failed to connect wallet: " + error.message);
           }
-        } catch (error) {
-          console.error("Error connecting wallet:", error);
-          showError("Failed to connect wallet. Please try again.");
+        } else {
+          showError("Please install MetaMask!");
         }
       }
 
