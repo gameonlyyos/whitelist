@@ -300,6 +300,15 @@
         width: 100%;
         max-width: 400px;
       }
+
+      .status-item.claimed {
+        color: #6366f1;
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid #6366f1;
+        padding: 12px;
+        border-radius: 8px;
+        margin: 8px 0;
+      }
     </style>
   </head>
   <body>
@@ -391,13 +400,34 @@
       // Tambahkan fungsi untuk mengecek whitelist
       async function checkWhitelist(address) {
         try {
-          const isWhitelisted = whitelistAddresses.includes(
-            address.toLowerCase()
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const airdrop = new ethers.Contract(
+            AIRDROP_ADDRESS,
+            NekoAirdrop.abi,
+            signer
           );
+
+          const [isWhitelisted, hasClaimed] = await Promise.all([
+            airdrop.whitelist(address),
+            airdrop.hasClaimed(address),
+          ]);
+
           const statusDiv = document.getElementById("status");
 
+          if (hasClaimed) {
+            statusDiv.innerHTML = `
+              <div class="status-item claimed">
+                <span>Claim Status:</span>
+                <span>🎉 You have already claimed your NEKO tokens!</span>
+              </div>
+            `;
+            document.getElementById("claimTokensBtn").style.display = "none";
+            return;
+          }
+
           if (isWhitelisted) {
-            statusDiv.innerHTML += `
+            statusDiv.innerHTML = `
               <div class="status-item success">
                 <span>Whitelist Status:</span>
                 <span>✅ Your address is whitelisted</span>
@@ -405,7 +435,7 @@
             `;
             document.getElementById("claimTokensBtn").style.display = "block";
           } else {
-            statusDiv.innerHTML += `
+            statusDiv.innerHTML = `
               <div class="status-item error">
                 <span>Whitelist Status:</span>
                 <span>❌ Your address is not whitelisted</span>
@@ -413,7 +443,6 @@
             `;
             document.getElementById("claimTokensBtn").style.display = "none";
           }
-          return isWhitelisted;
         } catch (error) {
           console.error("Error checking whitelist:", error);
           return false;
