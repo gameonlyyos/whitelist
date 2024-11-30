@@ -180,7 +180,7 @@
           .call();
 
         if (!isWhitelisted) {
-          statusDiv.textContent = ` ${userAccount}\nStatus: Not Whitelisted - You are not eligible for the airdrop`;
+          statusDiv.textContent = ` ${userAccount}\n Not Whitelisted - You are not eligible for the airdrop`;
           connectWalletBtn.disabled = true;
           return;
         }
@@ -190,10 +190,10 @@
           .call();
 
         if (hasClaimed) {
-          statusDiv.textContent = ` ${userAccount}\nStatus: Already Claimed`;
+          statusDiv.textContent = ` ${userAccount}\n Already Claimed`;
           connectWalletBtn.disabled = true;
         } else {
-          statusDiv.textContent = ` ${userAccount}\nStatus: Whitelisted - Click to claim your tokens`;
+          statusDiv.textContent = ` ${userAccount}\n Whitelisted - Click to claim your tokens`;
           connectWalletBtn.onclick = claimTokens;
         }
       }
