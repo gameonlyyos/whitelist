@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>NekoAirdrop Token Claim</title>
+    <title>Neko Claim</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <style>
       body {
@@ -22,12 +22,18 @@
         text-align: center;
         width: 400px;
       }
+      .logo {
+        width: 150px;
+        height: auto;
+        margin-bottom: 20px;
+        border-radius: 10px;
+      }
       h1 {
         color: #333;
         margin-bottom: 20px;
       }
       button {
-        background-color: #4caf50;
+        background-color: #4c74af;
         color: white;
         border: none;
         padding: 10px 20px;
@@ -50,7 +56,8 @@
   </head>
   <body>
     <div class="container">
-      <h1>NekoAirdrop Token Claim</h1>
+      <img src="logo.png" alt="Neko Token Logo" class="logo" />
+      <h1>Neko Claim</h1>
       <button id="connectWallet">Connect Wallet</button>
       <div id="status"></div>
     </div>
@@ -168,28 +175,26 @@
         console.log("Connected address:", userAccount);
         statusDiv.textContent = `Connected: ${userAccount}`;
 
-        // Check whitelist status
         const isWhitelisted = await nekoAirdropContract.methods
           .whitelist(userAccount)
           .call();
 
         if (!isWhitelisted) {
-          statusDiv.textContent = `Connected: ${userAccount}\nStatus: Not Whitelisted - You are not eligible for the airdrop`;
+          statusDiv.textContent = ` ${userAccount}\nStatus: Not Whitelisted - You are not eligible for the airdrop`;
           connectWalletBtn.disabled = true;
           return;
         }
 
-        // Check claim status
         const hasClaimed = await nekoAirdropContract.methods
           .hasClaimed(userAccount)
           .call();
 
         if (hasClaimed) {
-          statusDiv.textContent = `Connected: ${userAccount}\nStatus: Already Claimed`;
+          statusDiv.textContent = ` ${userAccount}\nStatus: Already Claimed`;
           connectWalletBtn.disabled = true;
         } else {
-          statusDiv.textContent = `Connected: ${userAccount}\nStatus: Whitelisted - Click to claim your tokens`;
-          connectWalletBtn.onclick = claimTokens; // Change button click handler to claim function
+          statusDiv.textContent = ` ${userAccount}\nStatus: Whitelisted - Click to claim your tokens`;
+          connectWalletBtn.onclick = claimTokens;
         }
       }
 
@@ -198,7 +203,6 @@
       async function connectWallet() {
         if (window.ethereum) {
           try {
-            // Tambahkan request eksplisit untuk membuka MetaMask
             await window.ethereum.request({
               method: "wallet_requestPermissions",
               params: [
@@ -227,7 +231,7 @@
           }
         } else {
           statusDiv.textContent =
-            "MetaMask tidak terdeteksi. Silakan install MetaMask terlebih dahulu.";
+            "MetaMask not detected. Please install MetaMask first.";
         }
       }
 
@@ -241,13 +245,20 @@
           statusDiv.textContent = "Claiming tokens...";
           connectWalletBtn.disabled = true;
 
-          await nekoAirdropContract.methods.claimTokens().send({
+          const tx = await nekoAirdropContract.methods.claimTokens().send({
             from: userAccount,
             gas: 300000,
             gasPrice: await web3.eth.getGasPrice(),
           });
 
-          statusDiv.textContent = "Tokens claimed successfully!";
+          const txHash = tx.transactionHash;
+          const sepoliaUrl = `https://sepolia.etherscan.io/tx/${txHash}`;
+          statusDiv.innerHTML = `
+            Tokens claimed successfully!<br><br>
+            <a href="${sepoliaUrl}" target="_blank" style="color: #4c74af; text-decoration: underline;">
+              View transaction on Sepolia Etherscan
+            </a>
+          `;
           connectWalletBtn.disabled = true;
         } catch (error) {
           statusDiv.textContent = "Token claim failed: " + error.message;
