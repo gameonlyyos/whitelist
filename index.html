@@ -145,6 +145,54 @@
       const connectWalletBtn = document.getElementById("connectWallet");
       const statusDiv = document.getElementById("status");
 
+      // Tambahkan fungsi untuk mengecek koneksi wallet saat halaman dimuat
+      async function checkWalletConnection() {
+        if (window.ethereum) {
+          web3 = new Web3(window.ethereum);
+          const accounts = await web3.eth.getAccounts();
+          
+          if (accounts.length > 0) {
+            userAccount = accounts[0];
+            nekoAirdropContract = new web3.eth.Contract(
+              nekoAirdropABI,
+              nekoAirdropAddress
+            );
+            
+            connectWalletBtn.textContent = "Claim Tokens";
+            handleConnection();
+          }
+        }
+      }
+
+      async function handleConnection() {
+        console.log("Using address:", userAccount);
+        statusDiv.textContent = `Connected: ${userAccount}`;
+
+        // Check whitelist status
+        const isWhitelisted = await nekoAirdropContract.methods
+          .whitelist(userAccount)
+          .call();
+        
+        if (!isWhitelisted) {
+          statusDiv.textContent = `Connected: ${userAccount}\nStatus: Not Whitelisted - You are not eligible for the airdrop`;
+          connectWalletBtn.disabled = true;
+          return;
+        }
+
+        // Check claim status
+        const hasClaimed = await nekoAirdropContract.methods
+          .hasClaimed(userAccount)
+          .call();
+
+        if (hasClaimed) {
+          statusDiv.textContent = `Connected: ${userAccount}\nStatus: Already Claimed`;
+          connectWalletBtn.disabled = true;
+        } else {
+          statusDiv.textContent = `Connected: ${userAccount}\nStatus: Whitelisted - You can claim your tokens`;
+          claimTokens();
+        }
+      }
+
       async function connectWallet() {
         if (window.ethereum) {
           try {
@@ -158,35 +206,9 @@
               nekoAirdropABI,
               nekoAirdropAddress
             );
-
-            console.log("Using address:", userAccount);
-            statusDiv.textContent = `Connected: ${userAccount}`;
-            connectWalletBtn.textContent = "Claim Tokens";
-
-            // Check whitelist status
-            const isWhitelisted = await nekoAirdropContract.methods
-              .whitelist(userAccount)
-              .call();
             
-            if (!isWhitelisted) {
-              statusDiv.textContent = `Connected: ${userAccount}\nStatus: Not Whitelisted - You are not eligible for the airdrop`;
-              connectWalletBtn.disabled = true;
-              return;
-            }
-
-            // Check claim status
-            const hasClaimed = await nekoAirdropContract.methods
-              .hasClaimed(userAccount)
-              .call();
-
-            if (hasClaimed) {
-              statusDiv.textContent = `Connected: ${userAccount}\nStatus: Already Claimed`;
-              connectWalletBtn.disabled = true;
-            } else {
-              statusDiv.textContent = `Connected: ${userAccount}\nStatus: Whitelisted - You can claim your tokens`;
-              // Automatically trigger claim function
-              claimTokens();
-            }
+            connectWalletBtn.textContent = "Claim Tokens";
+            handleConnection();
           } catch (error) {
             statusDiv.textContent = "Failed to connect: " + error.message;
             console.error(error);
@@ -194,6 +216,23 @@
         } else {
           statusDiv.textContent = "MetaMask not detected";
         }
+      }
+
+      // Panggil checkWalletConnection saat halaman dimuat
+      checkWalletConnection();
+      
+      // Deteksi perubahan akun MetaMask
+      if (window.ethereum) {
+        window.ethereum.on("accountsChanged", (accounts) => {
+          if (accounts.length > 0) {
+            userAccount = accounts[0];
+            connectWalletBtn.textContent = "Claim Tokens";
+            handleConnection();
+          } else {
+            connectWalletBtn.textContent = "Connect Wallet";
+            statusDiv.textContent = "";
+          }
+        });
       }
 
       async function claimTokens() {
@@ -220,13 +259,6 @@
       }
 
       connectWalletBtn.addEventListener("click", connectWallet);
-
-      // Deteksi perubahan akun MetaMask
-      if (window.ethereum) {
-        window.ethereum.on("accountsChanged", (accounts) => {
-          window.location.reload();
-        });
-      }
     </script>
   </body>
 </html>
