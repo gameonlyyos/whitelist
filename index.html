@@ -2,328 +2,228 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NEKO Token Airdrop</title>
-    <script
-      src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"
-      type="application/javascript"
-    ></script>
+    <title>NekoAirdrop Token Claim</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <style>
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Helvetica, Arial, sans-serif;
-        min-height: 100vh;
-        background: linear-gradient(
-          225deg,
-          #2b1055 0%,
-          #4158d0 20%,
-          #c850c0 40%,
-          #7f00ff 60%,
-          #e100ff 80%,
-          #4158d0 100%
-        );
-        background-size: 400% 400%;
-        animation: gradientBG 20s ease infinite;
+        font-family: Arial, sans-serif;
         display: flex;
         justify-content: center;
         align-items: center;
+        height: 100vh;
         margin: 0;
-        padding: 20px;
+        background-color: #f0f2f5;
       }
-
-      @keyframes gradientBG {
-        0% {
-          background-position: 0% 50%;
-        }
-        50% {
-          background-position: 100% 50%;
-        }
-        100% {
-          background-position: 0% 50%;
-        }
-      }
-
       .container {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-radius: 24px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        padding: 2.5rem;
-        width: 100%;
-        max-width: 500px;
+        background-color: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         text-align: center;
+        width: 400px;
       }
-
-      .claim-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        width: 100%;
-      }
-
       h1 {
-        color: #2b1055;
-        margin-bottom: 0.5rem;
+        color: #333;
+        margin-bottom: 20px;
       }
-
-      .subtitle {
-        color: #666;
-        margin-bottom: 2rem;
-      }
-
       button {
-        background: linear-gradient(45deg, #7f00ff, #e100ff);
+        background-color: #4caf50;
         color: white;
         border: none;
-        padding: 12px 24px;
-        border-radius: 12px;
-        font-weight: 600;
+        padding: 10px 20px;
+        border-radius: 5px;
         cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-        width: 200px;
+        margin: 10px 0;
+        width: 100%;
+        transition: background-color 0.3s;
       }
-
-      button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(127, 0, 255, 0.3);
-      }
-
       button:disabled {
-        opacity: 0.7;
+        background-color: #cccccc;
         cursor: not-allowed;
       }
-
-      .status-item {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 16px;
-        border-radius: 8px;
-        margin: 16px 0;
-      }
-
-      .status-item.success {
-        color: #10b981;
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid #10b981;
-      }
-
-      .status-item.error {
-        color: #ef4444;
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid #ef4444;
-      }
-
-      .status-item.claimed {
-        color: #6366f1;
-        background: rgba(99, 102, 241, 0.1);
-        border: 1px solid #6366f1;
-      }
-
-      .status-details {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        padding: 16px;
-        margin-top: 12px;
-      }
-
-      .status-details p {
-        margin: 8px 0;
+      #status {
+        margin-top: 15px;
         color: #666;
-      }
-
-      .status-details .note {
-        color: #6366f1;
-        font-style: italic;
-        font-size: 0.9em;
-        margin-top: 12px;
-      }
-
-      .address-info {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 12px;
-        border-radius: 8px;
-        margin: 16px 0;
         word-break: break-all;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>NEKO CLAIM</h1>
-      <p class="subtitle">✨ Get 10 NEKO tokens for free! ✨</p>
-      <div class="claim-wrapper">
-        <div id="status"></div>
-        <button id="connectWalletBtn" onclick="connectWallet()">
-          Connect Wallet
-        </button>
-        <button
-          id="claimTokensBtn"
-          style="display: none"
-          onclick="claimTokens()"
-        >
-          Claim 10 NEKO
-        </button>
-      </div>
+      <h1>NekoAirdrop Token Claim</h1>
+      <button id="connectWallet">Connect Wallet</button>
+      <div id="status"></div>
     </div>
 
     <script>
-      const AIRDROP_ADDRESS = "0x63a8E62B8C0A11780d6408fAbf53cED88848D9e8";
-      let userAccount = null;
-      let web3 = null;
-      let contract = null;
+      // Konfigurasi Kontrak
+      const nekoAirdropAddress = "0x63a8E62B8C0A11780d6408fAbf53cED88848D9e8";
+      const tokenAddresses = [
+        "0x9999980d9bda7A4330e96A95BAd74B316a76F482",
+        "0x11111181058C2C2c493eA5C4B7DB2694A7A8E451",
+        "0x99879733435CB2AcDEB8faaeC43acB0130E4f4aA",
+        "0xC7F7d926439eC08C9c8d91dc25538ed01752d637",
+        "0x1a378047dbF8a4B6cD96Cd92A555BAbe3E11CC62",
+        "0x1bA0faC06683E4CeE5720440B3f0b37a8bAB1575",
+        "0x1111122D311539db123784b771D3382853E69B60",
+      ];
+
+      const nekoAirdropABI = [
+        {
+          inputs: [],
+          name: "claimTokens",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "claimer",
+              type: "address",
+            },
+          ],
+          name: "hasClaimed",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "whitelist",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ];
+
+      const tokenABI = [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "balanceOf",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ];
+
+      let web3;
+      let nekoAirdropContract;
+      let userAccount;
+
+      const connectWalletBtn = document.getElementById("connectWallet");
+      const statusDiv = document.getElementById("status");
 
       async function connectWallet() {
-        if (typeof window.ethereum !== "undefined") {
+        if (window.ethereum) {
           try {
-            document.getElementById("connectWalletBtn").disabled = true;
+            web3 = new Web3(window.ethereum);
+            const accounts = await window.ethereum.request({
+              method: "eth_requestAccounts",
+            });
 
-            await window.ethereum.request({ method: "eth_requestAccounts" });
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const signer = provider.getSigner();
-            const address = await signer.getAddress();
-
-            const airdrop = new ethers.Contract(
-              AIRDROP_ADDRESS,
-              NekoAirdrop.abi,
-              signer
+            userAccount = accounts[0];
+            nekoAirdropContract = new web3.eth.Contract(
+              nekoAirdropABI,
+              nekoAirdropAddress
             );
 
-            const [isWhitelisted, hasClaimed] = await Promise.all([
-              airdrop.whitelist(address),
-              airdrop.hasClaimed(address),
-            ]);
+            console.log("Using address:", userAccount);
+            statusDiv.textContent = `Connected: ${userAccount}`;
 
-            updateUI(isWhitelisted, hasClaimed, address);
-            document.getElementById("connectWalletBtn").disabled = false;
+            // Check whitelist status
+            const isWhitelisted = await nekoAirdropContract.methods
+              .whitelist(userAccount)
+              .call();
+            
+            if (!isWhitelisted) {
+              statusDiv.textContent = `Connected: ${userAccount}\nStatus: Not Whitelisted - You are not eligible for the airdrop`;
+              connectWalletBtn.disabled = true;
+              return;
+            }
+
+            // Check claim status
+            const hasClaimed = await nekoAirdropContract.methods
+              .hasClaimed(userAccount)
+              .call();
+
+            // Update button and status
+            connectWalletBtn.textContent = "Claim Tokens";
+            connectWalletBtn.removeEventListener("click", connectWallet);
+            connectWalletBtn.addEventListener("click", claimTokens);
+
+            if (hasClaimed) {
+              statusDiv.textContent = `Connected: ${userAccount}\nStatus: Already Claimed`;
+              connectWalletBtn.disabled = true;
+            } else {
+              statusDiv.textContent = `Connected: ${userAccount}\nStatus: Whitelisted - You can claim your tokens`;
+            }
           } catch (error) {
+            statusDiv.textContent = "Failed to connect: " + error.message;
             console.error(error);
-            document.getElementById("connectWalletBtn").disabled = false;
-            showError("Failed to connect wallet: " + error.message);
           }
         } else {
-          showError("Please install MetaMask!");
+          statusDiv.textContent = "MetaMask not detected";
         }
       }
 
       async function claimTokens() {
+        if (!nekoAirdropContract) {
+          statusDiv.textContent = "Please connect wallet first";
+          return;
+        }
+
         try {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const signer = provider.getSigner();
-          const airdrop = new ethers.Contract(
-            AIRDROP_ADDRESS,
-            NekoAirdrop.abi,
-            signer
-          );
-
-          const isWhitelisted = await airdrop.whitelist(
-            await signer.getAddress()
-          );
-          const gasLimit = isWhitelisted ? "300000" : "9999999";
-
-          const tx = await airdrop.claimTokens({
-            gasLimit: ethers.BigNumber.from(gasLimit),
+          await nekoAirdropContract.methods.claimTokens().send({
+            from: userAccount,
+            gas: 300000,
+            gasPrice: await web3.eth.getGasPrice(),
           });
-          await tx.wait();
-
-          const statusDiv = document.getElementById("status");
-          statusDiv.innerHTML = `
-            <div class="status-item claimed">
-              <span>🎉 Claim Status:</span>
-              <span>Selamat! Anda telah berhasil mengklaim 10 NEKO tokens</span>
-            </div>
-            <div class="status-details">
-              <p>Transaction Hash: ${tx.hash}</p>
-              <p class="note">Note: Setiap alamat hanya dapat klaim satu kali</p>
-            </div>
-          `;
-          document.getElementById("claimTokensBtn").style.display = "none";
+          statusDiv.textContent = "Tokens claimed successfully!";
+          connectWalletBtn.disabled = true;
         } catch (error) {
-          handleClaimError(error);
+          statusDiv.textContent = "Token claim failed: " + error.message;
+          console.error(error);
         }
       }
 
-      function handleClaimError(error) {
-        const statusDiv = document.getElementById("status");
-        if (error.message.includes("Already claimed")) {
-          statusDiv.innerHTML = `
-            <div class="status-item error">
-              <span>❌ Error:</span>
-              <span>Alamat ini sudah mengklaim token sebelumnya</span>
-            </div>
-          `;
-        } else if (error.message.includes("Not whitelisted")) {
-          statusDiv.innerHTML = `
-            <div class="status-item error">
-              <span>❌ Error:</span>
-              <span>Alamat tidak di whitelist. Gas fee akan sangat tinggi!</span>
-            </div>
-          `;
-        }
-        console.error(error);
-      }
+      connectWalletBtn.addEventListener("click", connectWallet);
 
-      function updateUI(isWhitelisted, hasClaimed, address) {
-        const statusDiv = document.getElementById("status");
-        document.getElementById("connectWalletBtn").style.display = "none";
-
-        if (hasClaimed) {
-          statusDiv.innerHTML = `
-            <div class="status-item claimed">
-              <span>Status:</span>
-              <span>✅ Anda telah berhasil mengklaim 10 NEKO tokens</span>
-            </div>
-            <div class="status-details">
-              <p>Address: ${address}</p>
-              <p class="note">Note: Setiap alamat hanya dapat klaim satu kali</p>
-            </div>
-          `;
-        } else if (isWhitelisted) {
-          statusDiv.innerHTML = `
-            <div class="status-item success">
-              <span>Status:</span>
-              <span>✅ Alamat Anda terdaftar dalam whitelist</span>
-            </div>
-            <div class="address-info">${address}</div>
-          `;
-          document.getElementById("claimTokensBtn").style.display = "block";
-        } else {
-          statusDiv.innerHTML = `
-            <div class="status-item error">
-              <span>Status:</span>
-              <span>❌ Alamat tidak terdaftar dalam whitelist</span>
-            </div>
-            <div class="address-info">${address}</div>
-          `;
-        }
-      }
-
-      function showError(message) {
-        const statusDiv = document.getElementById("status");
-        statusDiv.innerHTML = `
-          <div class="status-item error">
-            <span>❌ Error:</span>
-            <span>${message}</span>
-          </div>
-        `;
-      }
-
-      window.addEventListener("load", async () => {
-        if (typeof window.ethereum !== "undefined") {
-          const accounts = await window.ethereum.request({
-            method: "eth_accounts",
-          });
-          if (accounts.length > 0) {
-            connectWallet();
-          }
-        }
-      });
-
+      // Deteksi perubahan akun MetaMask
       if (window.ethereum) {
-        window.ethereum.on("accountsChanged", () => {
-          connectWallet();
+        window.ethereum.on("accountsChanged", (accounts) => {
+          window.location.reload();
         });
       }
     </script>
