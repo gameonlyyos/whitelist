@@ -161,6 +161,7 @@
 
             console.log("Using address:", userAccount);
             statusDiv.textContent = `Connected: ${userAccount}`;
+            connectWalletBtn.textContent = "Claim Tokens";
 
             // Check whitelist status
             const isWhitelisted = await nekoAirdropContract.methods
@@ -203,6 +204,7 @@
 
         try {
           statusDiv.textContent = "Claiming tokens...";
+          connectWalletBtn.disabled = true;
           await nekoAirdropContract.methods.claimTokens().send({
             from: userAccount,
             gas: 300000,
@@ -212,6 +214,7 @@
           connectWalletBtn.disabled = true;
         } catch (error) {
           statusDiv.textContent = "Token claim failed: " + error.message;
+          connectWalletBtn.disabled = false;
           console.error(error);
         }
       }
