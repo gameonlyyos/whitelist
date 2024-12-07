@@ -408,27 +408,49 @@
             }
         };
 
-        const checkEligibility = async () => {
+        function safeGetElementById(id) {
+            const element = document.getElementById(id);
+            if (!element) {
+                console.warn(`Element with id '${id}' not found`);
+            }
+            return element;
+        }
+
+        function safeSetInnerHTML(id, content) {
+            const element = safeGetElementById(id);
+            if (element) {
+                element.innerHTML = content;
+            }
+        }
+
+        const checkEligibility = async (referralCode) => {
             try {
-                const publicKey = window.solana.publicKey.toString();
-                const response = await robustFetch(`${BACKEND_URL}/check-eligibility`, {
+                const eligibilityResponse = await robustFetch(`${BACKEND_URL}/check-eligibility`, {
                     method: 'POST',
-                    body: JSON.stringify({ publicKey })
+                    body: JSON.stringify({ referralCode }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
 
-                const result = await response.json();
+                console.log('Eligibility Response:', eligibilityResponse);
 
-                if (result.eligible) {
-                    document.getElementById('airdropStatus').innerHTML = 
-                        `<p class="text-success">Eligible for ${result.amount} SWAVE Tokens!</p>`;
-                    document.getElementById('claimTokens').disabled = false;
-                } else {
-                    throw new Error('Not eligible for airdrop');
-                }
-            } catch (err) {
-                document.getElementById('airdropStatus').innerHTML = 
-                    `<p class="text-danger">Eligibility Check Failed: ${err.message}</p>`;
-                showError(err.message);
+                // Gunakan fungsi aman untuk set innerHTML
+                safeSetInnerHTML('referralCodeDisplay', referralCode || 'Tidak ada kode referral');
+                safeSetInnerHTML('eligibilityStatus', 
+                    eligibilityResponse.eligible 
+                        ? 'Anda eligible untuk airdrop!' 
+                        : 'Anda belum eligible untuk airdrop'
+                );
+
+                return eligibilityResponse;
+            } catch (error) {
+                console.error('Eligibility Check Error:', error);
+                
+                // Gunakan fungsi aman untuk set innerHTML
+                safeSetInnerHTML('eligibilityStatus', `Error: ${error.message}`);
+                
+                throw error;
             }
         };
 
@@ -490,15 +512,6 @@
                 console.error('Error Display Element Not Found:', message);
                 alert(message);
             }
-        }
-
-        // Fungsi untuk memeriksa keberadaan elemen
-        function safeGetElementById(id) {
-            const element = document.getElementById(id);
-            if (!element) {
-                console.warn(`Element with ID '${id}' not found`);
-            }
-            return element;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
