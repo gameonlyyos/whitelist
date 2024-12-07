@@ -208,63 +208,102 @@
             <div class="col-md-12">
                 <h2 class="text-center mb-4">SolWaveCoin Airdrop</h2>
                 
-                <!-- Wallet Connection Section -->
-                <div class="step">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h4>1. Connect Wallet</h4>
-                            <p>Connect your Phantom Wallet to participate in the airdrop</p>
-                            <div id="walletStatus" class="mt-3"></div>
-                        </div>
-                        <div class="col-md-4 text-right">
-                            <button id="connectWalletBtn" class="btn btn-primary">Connect Wallet</button>
+                <div id="claimSection">
+                    <!-- Wallet Connection Section -->
+                    <div class="step">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h4>1. Connect Wallet</h4>
+                                <p>Connect your Phantom Wallet to participate in the airdrop</p>
+                                <div id="walletStatus" class="mt-3"></div>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <button id="connectWalletBtn" class="btn btn-primary">Connect Wallet</button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Error Message Section -->
-                <div class="step">
-                    <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
-                </div>
+                    <!-- Error Message Section -->
+                    <div class="step">
+                        <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+                    </div>
 
-                <!-- Eligibility Section -->
-                <div class="step">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h4>2. Check Eligibility</h4>
-                            <p>Check if you're eligible for the airdrop</p>
-                            <div id="eligibilityStatus" class="mt-3"></div>
+                    <!-- Eligibility Section -->
+                    <div class="step">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h4>2. Check Eligibility</h4>
+                                <p>Check if you're eligible for the airdrop</p>
+                                <div id="eligibilityStatus" class="mt-3"></div>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <button id="checkEligibility" class="btn btn-secondary">Check Eligibility</button>
+                            </div>
                         </div>
-                        <div class="col-md-4 text-right">
-                            <button id="checkEligibility" class="btn btn-secondary">Check Eligibility</button>
+                    </div>
+
+                    <!-- Referral Section -->
+                    <div class="step">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h4>3. Referral Code</h4>
+                                <p>Your unique referral code:</p>
+                                <div id="referralCodeDisplay" class="alert alert-info"></div>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <button id="copyReferralCode" class="btn btn-outline-primary">Copy Code</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Token Claim Section -->
+                    <div class="step">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h4>4. Claim Tokens</h4>
+                                <p>Claim your airdrop tokens</p>
+                                <div id="claimStatus" class="mt-3"></div>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <button id="claimTokens" class="btn btn-claim">Claim Tokens</button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Referral Section -->
-                <div class="step">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h4>3. Referral Code</h4>
-                            <p>Your unique referral code:</p>
-                            <div id="referralCodeDisplay" class="alert alert-info"></div>
-                        </div>
-                        <div class="col-md-4 text-right">
-                            <button id="copyReferralCode" class="btn btn-outline-primary">Copy Code</button>
-                        </div>
-                    </div>
-                </div>
+                <div id="referralSection" style="display: none;">
+                    <div class="step">
+                        <h3>Congratulations! 🎉</h3>
+                        <p>You've successfully claimed your tokens!</p>
+                        
+                        <div class="referral-box">
+                            <h4>Your Referral Code</h4>
+                            <div class="input-group mb-3">
+                                <input 
+                                    type="text" 
+                                    id="yourReferralCode" 
+                                    class="form-control" 
+                                    readonly 
+                                    value=""
+                                >
+                                <div class="input-group-append">
+                                    <button 
+                                        id="copyReferralCode" 
+                                        class="btn btn-outline-primary"
+                                        onclick="copyReferralCode()"
+                                    >
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
 
-                <!-- Token Claim Section -->
-                <div class="step">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h4>4. Claim Tokens</h4>
-                            <p>Claim your airdrop tokens</p>
-                            <div id="claimStatus" class="mt-3"></div>
-                        </div>
-                        <div class="col-md-4 text-right">
-                            <button id="claimTokens" class="btn btn-claim">Claim Tokens</button>
+                            <div class="referral-stats">
+                                <p>Total Claimed: <span id="totalClaimedAmount">0</span> Tokens</p>
+                                <p class="text-muted">
+                                    Share this referral code with friends to earn bonus tokens!
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -561,20 +600,14 @@
                 const claimStatus = safeGetElement('claimStatus');
                 const claimTokensBtn = safeGetElement('claimTokens');
 
-                // Check eligibility before claiming
-                const eligibilityResponse = await checkEligibility();
-                if (!eligibilityResponse || !eligibilityResponse.eligible) {
-                    throw new Error('You are not eligible for the airdrop');
-                }
-
                 // Prepare claim request
                 const claimRequest = {
                     walletAddress: window.phantomWalletPublicKey,
-                    referralCode: window.referralCode || ''
+                    referralCode: window.referralCode || null
                 };
 
                 // Send claim request to backend
-                const claimResponse = await robustFetch(`${BACKEND_URL}/claim-tokens`, {
+                const claimResponse = await robustFetch(`${BACKEND_URL}/api/airdrop`, {
                     method: 'POST',
                     body: claimRequest
                 });
@@ -586,7 +619,7 @@
                         claimStatus.innerHTML = `
                             <div class="alert alert-success">
                                 Successfully claimed ${claimResponse.amount} tokens! 
-                                Transaction Hash: ${claimResponse.txHash || 'N/A'}
+                                Referral Code: ${claimResponse.referralCode || 'N/A'}
                             </div>
                         `;
                     }
@@ -595,6 +628,11 @@
                     if (claimTokensBtn) {
                         claimTokensBtn.disabled = true;
                         claimTokensBtn.textContent = 'Tokens Claimed';
+                    }
+
+                    // Show referral page if applicable
+                    if (claimResponse.referralCode) {
+                        showReferralPage(claimResponse.referralCode, claimResponse.amount);
                     }
                 } else {
                     throw new Error(claimResponse.message || 'Token claim failed');
@@ -607,6 +645,54 @@
                 const claimTokensBtn = safeGetElement('claimTokens');
                 if (claimTokensBtn) {
                     claimTokensBtn.disabled = true;
+                }
+            }
+        }
+
+        // Referral Page Display Function
+        function showReferralPage(referralCode, totalAmount) {
+            // Hide main claim section
+            const claimSection = safeGetElement('claimSection');
+            if (claimSection) {
+                claimSection.style.display = 'none';
+            }
+
+            // Show referral section
+            const referralSection = safeGetElement('referralSection');
+            if (referralSection) {
+                referralSection.style.display = 'block';
+                
+                // Set referral code
+                const referralCodeElement = safeGetElement('yourReferralCode');
+                if (referralCodeElement) {
+                    referralCodeElement.value = referralCode;
+                }
+
+                // Set total claimed amount
+                const totalClaimedElement = safeGetElement('totalClaimedAmount');
+                if (totalClaimedElement) {
+                    totalClaimedElement.textContent = totalAmount;
+                }
+            }
+        }
+
+        // Referral Code Copy Function
+        function copyReferralCode() {
+            const referralCodeElement = safeGetElement('yourReferralCode');
+            
+            if (referralCodeElement) {
+                referralCodeElement.select();
+                document.execCommand('copy');
+                
+                // Show copied notification
+                const copyButton = safeGetElement('copyReferralCode');
+                if (copyButton) {
+                    const originalText = copyButton.innerHTML;
+                    copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    
+                    setTimeout(() => {
+                        copyButton.innerHTML = originalText;
+                    }, 2000);
                 }
             }
         }
