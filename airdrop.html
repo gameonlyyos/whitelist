@@ -262,57 +262,8 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
         // Konfigurasi Backend URL
-        // PENTING: Ganti dengan IP komputer Anda yang dapat diakses dari luar
-        const BACKEND_URL = 'http://localhost:3000';  
-
-        // Fungsi fetch yang lebih robust
-        async function robustFetch(url, options = {}) {
-            const defaultOptions = {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                timeout: 10000  // 10 detik timeout
-            };
-
-            const mergedOptions = { ...defaultOptions, ...options };
-
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), mergedOptions.timeout);
-
-                const response = await fetch(url, {
-                    ...mergedOptions,
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Server error response:', errorText);
-                    throw new Error(errorText || `HTTP error! status: ${response.status}`);
-                }
-
-                return await response.json();
-            } catch (error) {
-                console.error('Fetch Error:', {
-                    message: error.message,
-                    name: error.name,
-                    url: url
-                });
-
-                if (error.name === 'AbortError') {
-                    throw new Error('Request timed out. Periksa koneksi internet.');
-                }
-
-                if (error.message.includes('Failed to fetch')) {
-                    throw new Error('Tidak dapat terhubung ke server. Periksa koneksi internet atau status server.');
-                }
-
-                throw error;
-            }
-        }
+        // PENTING: Ganti dengan URL Ngrok yang aktif
+        const BACKEND_URL = 'https://88d3-110-137-36-166.ngrok-free.app';  // Ngrok URL
 
         console.log('Backend URL:', BACKEND_URL);
 
