@@ -207,32 +207,34 @@
         <div class="airdrop-container text-center">
             <h1 class="text-center mb-4">SolWaveCoin Airdrop 🌊</h1>
             
-            <div class="step">
-                <h3>Step 1: Connect Your Wallet</h3>
-                <p>Connect your Phantom wallet to participate in the airdrop.</p>
-                <button id="connectWallet" class="btn btn-primary">
-                    <i class="fas fa-wallet mr-2"></i>Connect Phantom Wallet
-                </button>
-                <div id="walletStatus" class="mt-3"></div>
-            </div>
+            <div id="claimSection">
+                <div class="step">
+                    <h3>Step 1: Connect Your Wallet</h3>
+                    <p>Connect your Phantom wallet to participate in the airdrop.</p>
+                    <button id="connectWallet" class="btn btn-primary">
+                        <i class="fas fa-wallet mr-2"></i>Connect Phantom Wallet
+                    </button>
+                    <div id="walletStatus" class="mt-3"></div>
+                </div>
 
-            <div class="step">
-                <h3>Step 2: Enter Referral Code (Optional)</h3>
-                <p>If you have a referral code, enter it below to earn extra tokens!</p>
-                <div class="input-group mb-3">
-                    <input type="text" id="referralCode" class="form-control" placeholder="Enter referral code">
+                <div class="step">
+                    <h3>Step 2: Enter Referral Code (Optional)</h3>
+                    <p>If you have a referral code, enter it below to earn extra tokens!</p>
+                    <div class="input-group mb-3">
+                        <input type="text" id="referralCode" class="form-control" placeholder="Enter referral code">
+                    </div>
+                </div>
+
+                <div class="step">
+                    <h3>Step 3: Claim Your Tokens</h3>
+                    <p>Claim your SWAVE tokens and get your unique referral code.</p>
+                    <button id="claimTokens" class="btn btn-success" disabled>
+                        <i class="fas fa-gift mr-2"></i>Claim Tokens
+                    </button>
                 </div>
             </div>
 
-            <div class="step">
-                <h3>Step 3: Claim Your Tokens</h3>
-                <p>Claim your SWAVE tokens and get your unique referral code.</p>
-                <button id="claimTokens" class="btn btn-success" disabled>
-                    <i class="fas fa-gift mr-2"></i>Claim Tokens
-                </button>
-            </div>
-
-            <div id="referralInfo" class="step d-none">
+            <div id="referralSection" style="display: none;">
                 <h3>Step 4: Share & Earn More!</h3>
                 <p>Share your referral code with friends to earn bonus tokens!</p>
                 <div class="referral-box p-3 bg-light rounded">
@@ -422,11 +424,52 @@
             }, 2000);
         }
 
+        function showReferralPage(referralCode, totalAmount) {
+            document.getElementById('claimSection').style.display = 'none';
+            document.getElementById('referralSection').style.display = 'block';
+            
+            document.getElementById('yourReferralCode').value = referralCode;
+            document.getElementById('totalClaimedAmount').textContent = totalAmount;
+            
+            // Salin referral code
+            const copyButton = document.getElementById('copyReferralCode');
+            copyButton.addEventListener('click', () => {
+                navigator.clipboard.writeText(referralCode).then(() => {
+                    copyButton.textContent = 'Tersalin!';
+                    setTimeout(() => {
+                        copyButton.textContent = 'Salin Kode Referral';
+                    }, 2000);
+                });
+            });
+        }
+
         // Event Listeners
         document.getElementById('connectWallet').addEventListener('click', connectPhantomWallet);
         document.getElementById('checkEligibility').addEventListener('click', checkEligibility);
-        document.getElementById('claimTokens').addEventListener('click', claimTokens);
-        document.getElementById('verifyWallet').addEventListener('click', verifyWallet);
+        document.getElementById('claimTokens').addEventListener('click', async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/airdrop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        walletAddress: window.solana.publicKey.toString(),
+                        referralCode: document.getElementById('referralCode').value || null
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showReferralPage(
+                        data.referralCode, 
+                        data.amount
+                    );
+                }
+            } catch (error) {
+                showError(error.message);
+            }
+        });
     </script>
 </body>
 </html>
