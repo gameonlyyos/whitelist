@@ -203,57 +203,66 @@
         </div>
     </nav>
 
-    <div class="container">
-        <div class="airdrop-container text-center">
-            <h1 class="text-center mb-4">SolWaveCoin Airdrop 🌊</h1>
-            
-            <div id="claimSection">
+    <div class="container airdrop-container">
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="text-center mb-4">SolWaveCoin Airdrop</h2>
+                
+                <!-- Wallet Connection Section -->
                 <div class="step">
-                    <h3>Step 1: Connect Your Wallet</h3>
-                    <p>Connect your Phantom wallet to participate in the airdrop.</p>
-                    <button id="connectWalletBtn" class="btn btn-primary">
-                        <i class="fas fa-wallet mr-2"></i>Connect Phantom Wallet
-                    </button>
-                    <div id="walletStatus" class="mt-3"></div>
-                </div>
-
-                <div class="step">
-                    <h3>Step 2: Enter Referral Code (Optional)</h3>
-                    <p>If you have a referral code, enter it below to earn extra tokens!</p>
-                    <div class="input-group mb-3">
-                        <input type="text" id="referralCode" class="form-control" placeholder="Enter referral code">
-                    </div>
-                </div>
-
-                <div class="step">
-                    <h3>Step 3: Claim Your Tokens</h3>
-                    <p>Claim your SWAVE tokens and get your unique referral code.</p>
-                    <button id="claimTokens" class="btn btn-success" disabled>
-                        <i class="fas fa-gift mr-2"></i>Claim Tokens
-                    </button>
-                </div>
-            </div>
-
-            <div id="referralSection" style="display: none;">
-                <h3>Step 4: Share & Earn More!</h3>
-                <p>Share your referral code with friends to earn bonus tokens!</p>
-                <div class="referral-box p-3 bg-light rounded">
-                    <h4>Your Referral Code:</h4>
-                    <div class="input-group mb-3">
-                        <input type="text" id="yourReferralCode" class="form-control" readonly>
-                        <div class="input-group-append">
-                            <button class="btn btn-outline-primary" onclick="copyReferralCode()">
-                                <i class="fas fa-copy"></i>
-                            </button>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4>1. Connect Wallet</h4>
+                            <p>Connect your Phantom Wallet to participate in the airdrop</p>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <button id="connectWalletBtn" class="btn btn-primary">Connect Wallet</button>
                         </div>
                     </div>
-                    <div class="referral-stats mt-3">
-                        <p>Referrals: <span id="referralCount">0</span></p>
-                        <p>Bonus Tokens: <span id="bonusTokens">0</span> SWAVE</p>
+                </div>
+
+                <!-- Eligibility Section -->
+                <div class="step">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4>2. Check Eligibility</h4>
+                            <p>Check if you're eligible for the airdrop</p>
+                            <div id="eligibilityStatus" class="mt-3"></div>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <button id="checkEligibility" class="btn btn-secondary">Check Eligibility</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Referral Section -->
+                <div class="step">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4>3. Referral Code</h4>
+                            <p>Your unique referral code:</p>
+                            <div id="referralCodeDisplay" class="alert alert-info"></div>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <button id="copyReferralCode" class="btn btn-outline-primary">Copy Code</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Token Claim Section -->
+                <div class="step">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4>4. Claim Tokens</h4>
+                            <p>Claim your airdrop tokens</p>
+                            <div id="claimStatus" class="mt-3"></div>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <button id="claimTokens" class="btn btn-claim">Claim Tokens</button>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div id="errorMessage" class="error-message" style="display: none;"></div>
         </div>
     </div>
 
@@ -423,189 +432,149 @@
             }
         }
 
-        const checkEligibility = async (referralCode) => {
+        // Token Claim Function
+        async function claimTokens() {
             try {
-                const eligibilityResponse = await robustFetch(`${BACKEND_URL}/check-eligibility`, {
+                // Check if wallet is connected
+                if (!window.phantomWalletPublicKey) {
+                    throw new Error('Please connect your Phantom Wallet first');
+                }
+
+                // Check eligibility before claiming
+                const eligibilityResponse = await checkEligibility();
+                if (!eligibilityResponse || !eligibilityResponse.eligible) {
+                    throw new Error('You are not eligible for the airdrop');
+                }
+
+                // Prepare claim request
+                const claimRequest = {
+                    walletPublicKey: window.phantomWalletPublicKey,
+                    referralCode: window.referralCode || ''
+                };
+
+                // Send claim request to backend
+                const claimResponse = await robustFetch(`${BACKEND_URL}/claim-tokens`, {
                     method: 'POST',
-                    body: JSON.stringify({ referralCode }),
                     headers: {
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify(claimRequest)
                 });
 
-                console.log('Eligibility Response:', eligibilityResponse);
-
-                // Gunakan fungsi aman untuk set innerHTML
-                safeSetInnerHTML('referralCodeDisplay', referralCode || 'Tidak ada kode referral');
-                safeSetInnerHTML('eligibilityStatus', 
-                    eligibilityResponse.eligible 
-                        ? 'Anda eligible untuk airdrop!' 
-                        : 'Anda belum eligible untuk airdrop'
-                );
-
-                return eligibilityResponse;
+                // Handle claim response
+                if (claimResponse.success) {
+                    const claimStatus = document.getElementById('claimStatus');
+                    claimStatus.innerHTML = `
+                        <div class="alert alert-success">
+                            Successfully claimed ${claimResponse.amount} tokens! 
+                            Transaction Hash: ${claimResponse.txHash}
+                        </div>
+                    `;
+                    
+                    // Disable claim button after successful claim
+                    document.getElementById('claimTokens').disabled = true;
+                } else {
+                    throw new Error(claimResponse.message || 'Token claim failed');
+                }
             } catch (error) {
-                console.error('Eligibility Check Error:', error);
-                
-                // Gunakan fungsi aman untuk set innerHTML
-                safeSetInnerHTML('eligibilityStatus', `Error: ${error.message}`);
-                
-                throw error;
+                showError(`Token Claim Error: ${error.message}`);
             }
-        };
+        }
 
-        const claimTokens = async () => {
+        // Enhanced Eligibility Check
+        async function checkEligibility() {
             try {
-                const walletAddress = document.getElementById('walletAddress').value;
-                const referralCode = document.getElementById('referralCode').value;
+                // Check if wallet is connected
+                if (!window.phantomWalletPublicKey) {
+                    throw new Error('Connect your wallet first');
+                }
 
-                const response = await robustFetch(`${BACKEND_URL}/api/register`, {
+                // Send eligibility request
+                const eligibilityResponse = await robustFetch(`${BACKEND_URL}/check-eligibility`, {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
-                        walletAddress,
-                        referralCode
+                        walletPublicKey: window.phantomWalletPublicKey
                     })
                 });
 
-                const data = await response.json();
-                if (data.success) {
-                    document.getElementById('yourReferralCode').value = data.referralCode;
-                    document.getElementById('referralInfo').classList.remove('d-none');
-                    updateReferralStats();
+                // Update UI with eligibility status
+                const eligibilityStatus = document.getElementById('eligibilityStatus');
+                const referralCodeDisplay = document.getElementById('referralCodeDisplay');
+
+                if (eligibilityResponse.eligible) {
+                    eligibilityStatus.innerHTML = `
+                        <div class="alert alert-success">
+                            Eligible for Airdrop! 
+                            Claimable Amount: ${eligibilityResponse.amount} Tokens
+                        </div>
+                    `;
+
+                    // Display referral code if available
+                    if (eligibilityResponse.referralCode) {
+                        window.referralCode = eligibilityResponse.referralCode;
+                        referralCodeDisplay.innerHTML = `
+                            <strong>Your Referral Code:</strong> 
+                            ${eligibilityResponse.referralCode}
+                        `;
+                    }
+
+                    return eligibilityResponse;
+                } else {
+                    eligibilityStatus.innerHTML = `
+                        <div class="alert alert-warning">
+                            Not Eligible for Airdrop
+                        </div>
+                    `;
+                    return null;
                 }
             } catch (error) {
-                showError(error.message);
-            }
-        };
-
-        const verifyWallet = async () => {
-            try {
-                // In a real implementation, this would verify token balance
-                document.getElementById('airdropStatus').innerHTML = 
-                    `<p class="text-success">Tokens Verified in Wallet!</p>`;
-            } catch (err) {
-                document.getElementById('airdropStatus').innerHTML = 
-                    `<p class="text-danger">Verification Failed: ${err.message}</p>`;
-                showError(err.message);
-            }
-        };
-
-        // Enhanced wallet connection status
-        function updateWalletStatus(connected) {
-            const statusElement = document.getElementById('walletStatus');
-            if (connected) {
-                statusElement.innerHTML = '<span class="text-success"><i class="fas fa-check-circle"></i> Connected</span>';
-                document.getElementById('connectWalletBtn').disabled = true;
-            } else {
-                statusElement.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-circle"></i> Not Connected</span>';
-                document.getElementById('connectWalletBtn').disabled = false;
+                showError(`Eligibility Check Error: ${error.message}`);
+                return null;
             }
         }
 
-        // Improved error handling
-        function showError(message) {
-            const errorElement = document.getElementById('errorMessage');
-            if (errorElement) {
-                errorElement.textContent = message;
-                errorElement.style.display = 'block';
+        // Copy Referral Code Function
+        function copyReferralCode() {
+            const referralCode = document.getElementById('referralCodeDisplay').textContent.trim();
+            
+            if (referralCode) {
+                navigator.clipboard.writeText(referralCode).then(() => {
+                    alert('Referral code copied to clipboard!');
+                }).catch(err => {
+                    showError('Failed to copy referral code');
+                });
             } else {
-                console.error('Error Display Element Not Found:', message);
-                alert(message);
+                showError('No referral code available');
             }
         }
 
+        // Event Listeners Setup
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM Loaded: Setting up event listeners');
 
-            // Pastikan tombol connect wallet ada
-            const connectButton = document.getElementById('connectWalletBtn');
-            if (connectButton) {
-                connectButton.addEventListener('click', async () => {
-                    try {
-                        console.log('Connect Wallet Button Clicked');
-                        await connectPhantomWallet();
-                    } catch (error) {
-                        console.error('Connect Wallet Error:', error);
-                        showError(`Koneksi Wallet Gagal: ${error.message}`);
-                    }
-                });
-            } else {
-                console.error('Connect Wallet Button Not Found');
+            // Safely add event listeners
+            const connectWalletBtn = document.getElementById('connectWalletBtn');
+            const checkEligibilityBtn = document.getElementById('checkEligibility');
+            const claimTokensBtn = document.getElementById('claimTokens');
+            const copyReferralCodeBtn = document.getElementById('copyReferralCode');
+
+            if (connectWalletBtn) {
+                connectWalletBtn.addEventListener('click', connectPhantomWallet);
             }
-        });
 
-        async function updateReferralStats() {
-            try {
-                const walletAddress = document.getElementById('walletAddress').value;
-                const response = await robustFetch(`${BACKEND_URL}/api/user/${walletAddress}`);
-
-                const data = await response.json();
-
-                document.getElementById('referralCount').textContent = data.referralCount;
-                document.getElementById('bonusTokens').textContent = 
-                    data.totalTokens - 200; // Subtract base amount
-            } catch (error) {
-                console.error('Error updating referral stats:', error);
+            if (checkEligibilityBtn) {
+                checkEligibilityBtn.addEventListener('click', checkEligibility);
             }
-        }
 
-        function copyReferralCode() {
-            const referralCode = document.getElementById('yourReferralCode');
-            referralCode.select();
-            document.execCommand('copy');
-            
-            // Show copied notification
-            const button = event.currentTarget;
-            const originalHTML = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-check"></i>';
-            setTimeout(() => {
-                button.innerHTML = originalHTML;
-            }, 2000);
-        }
+            if (claimTokensBtn) {
+                claimTokensBtn.addEventListener('click', claimTokens);
+            }
 
-        function showReferralPage(referralCode, totalAmount) {
-            document.getElementById('claimSection').style.display = 'none';
-            document.getElementById('referralSection').style.display = 'block';
-            
-            document.getElementById('yourReferralCode').value = referralCode;
-            document.getElementById('totalClaimedAmount').textContent = totalAmount;
-            
-            // Salin referral code
-            const copyButton = document.getElementById('copyReferralCode');
-            copyButton.addEventListener('click', () => {
-                navigator.clipboard.writeText(referralCode).then(() => {
-                    copyButton.textContent = 'Tersalin!';
-                    setTimeout(() => {
-                        copyButton.textContent = 'Salin Kode Referral';
-                    }, 2000);
-                });
-            });
-        }
-
-        // Event Listeners
-        document.getElementById('connectWalletBtn').addEventListener('click', connectPhantomWallet);
-        document.getElementById('checkEligibility').addEventListener('click', checkEligibility);
-        document.getElementById('claimTokens').addEventListener('click', async () => {
-            try {
-                const response = await robustFetch(`${BACKEND_URL}/api/airdrop`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        walletAddress: window.solana.publicKey.toString(),
-                        referralCode: document.getElementById('referralCode').value || null
-                    })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    showReferralPage(
-                        data.referralCode, 
-                        data.amount
-                    );
-                } else {
-                    showError(data.message || 'Gagal claim airdrop');
-                }
-            } catch (error) {
-                showError('Koneksi ke backend gagal: ' + error.message);
+            if (copyReferralCodeBtn) {
+                copyReferralCodeBtn.addEventListener('click', copyReferralCode);
             }
         });
     </script>
