@@ -265,10 +265,13 @@
 
         // Phantom Wallet Connection
         const connectPhantomWallet = async () => {
+            console.log('Connecting to Phantom Wallet...');
             if ('solana' in window) {
                 try {
                     const response = await window.solana.connect();
                     const publicKey = response.publicKey.toString();
+
+                    console.log('Wallet Public Key:', publicKey);
 
                     // Update UI wallet status
                     document.getElementById('walletStatus').innerHTML = `
@@ -281,6 +284,7 @@
                     document.getElementById('claimTokens').disabled = false;
 
                     // Kirim request ke backend untuk validasi/registrasi
+                    console.log('Sending connect wallet request...');
                     const connectResponse = await fetch(`${BACKEND_URL}/connect-wallet`, {
                         method: 'POST',
                         headers: {
@@ -291,11 +295,24 @@
                         })
                     });
 
+                    console.log('Connect wallet response status:', connectResponse.status);
+                    
+                    // Tambahkan penanganan error response
+                    if (!connectResponse.ok) {
+                        const errorText = await connectResponse.text();
+                        console.error('Server error:', errorText);
+                        throw new Error(errorText || 'Gagal terhubung ke backend');
+                    }
+
                     const connectData = await connectResponse.json();
+                    console.log('Connect wallet response data:', connectData);
 
                     if (connectData.success) {
                         // Tambahkan logic tambahan jika perlu
                         console.log('Wallet connected and registered');
+                        
+                        // Tampilkan referral code
+                        document.getElementById('referralCode').value = connectData.referralCode;
                         
                         // Cek eligibility otomatis
                         await checkEligibility();
@@ -304,8 +321,18 @@
                     }
 
                 } catch (err) {
-                    console.error(err);
-                    showError('Koneksi Phantom Wallet gagal: ' + err.message);
+                    console.error('Wallet connection error FULL:', err);
+                    
+                    // Tampilkan pesan error yang lebih informatif
+                    showError(`Koneksi Wallet Gagal: ${err.message}`);
+                    
+                    // Reset UI
+                    document.getElementById('walletStatus').innerHTML = `
+                        <div class="alert alert-danger">
+                            Koneksi Wallet Gagal. Coba lagi.
+                        </div>
+                    `;
+                    document.getElementById('claimTokens').disabled = true;
                 }
             } else {
                 showError('Phantom Wallet tidak terdeteksi. Silakan install.');
