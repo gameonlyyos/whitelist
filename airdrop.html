@@ -260,50 +260,62 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
+        // Konfigurasi Backend URL
+        const BACKEND_URL = 'http://localhost:3000';  // Ganti dengan IP komputer Anda jika perlu
+
         // Phantom Wallet Connection
         const connectPhantomWallet = async () => {
             if ('solana' in window) {
-                const provider = window.solana;
                 try {
-                    // Connect to Phantom wallet
-                    const response = await provider.connect();
+                    const response = await window.solana.connect();
                     const publicKey = response.publicKey.toString();
 
-                    // Send connection request to backend
-                    const connectResponse = await fetch('http://localhost:3000/connect-wallet', {
+                    // Update UI wallet status
+                    document.getElementById('walletStatus').innerHTML = `
+                        <div class="alert alert-success">
+                            Wallet Connected: ${publicKey.substring(0,6)}...${publicKey.substring(publicKey.length-6)}
+                        </div>
+                    `;
+
+                    // Aktifkan tombol claim
+                    document.getElementById('claimTokens').disabled = false;
+
+                    // Kirim request ke backend untuk validasi/registrasi
+                    const connectResponse = await fetch(`${BACKEND_URL}/connect-wallet`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ publicKey })
+                        body: JSON.stringify({ 
+                            walletAddress: publicKey 
+                        })
                     });
 
-                    const result = await connectResponse.json();
+                    const connectData = await connectResponse.json();
 
-                    if (result.status === 'Connected') {
-                        document.getElementById('airdropStatus').innerHTML = 
-                            `<p class="text-success">Wallet Connected: ${publicKey.slice(0, 6)}...${publicKey.slice(-4)}</p>`;
-                        document.getElementById('checkEligibility').disabled = false;
-                        updateWalletStatus(true);
+                    if (connectData.success) {
+                        // Tambahkan logic tambahan jika perlu
+                        console.log('Wallet connected and registered');
+                        
+                        // Cek eligibility otomatis
+                        await checkEligibility();
                     } else {
-                        throw new Error(result.error);
+                        showError(connectData.message || 'Gagal registrasi wallet');
                     }
+
                 } catch (err) {
-                    document.getElementById('airdropStatus').innerHTML = 
-                        `<p class="text-danger">Connection Failed: ${err.message}</p>`;
-                    updateWalletStatus(false);
+                    console.error(err);
+                    showError('Koneksi Phantom Wallet gagal: ' + err.message);
                 }
             } else {
-                // Phantom wallet not detected
-                alert('Please install Phantom wallet');
-                window.open('https://phantom.app/', '_blank');
+                showError('Phantom Wallet tidak terdeteksi. Silakan install.');
             }
         };
 
         const checkEligibility = async () => {
             try {
                 const publicKey = window.solana.publicKey.toString();
-                const response = await fetch('http://localhost:3000/check-eligibility', {
+                const response = await fetch(`${BACKEND_URL}/check-eligibility`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -332,7 +344,7 @@
                 const walletAddress = document.getElementById('walletAddress').value;
                 const referralCode = document.getElementById('referralCode').value;
 
-                const response = await fetch('/api/register', {
+                const response = await fetch(`${BACKEND_URL}/api/register`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -399,7 +411,7 @@
         async function updateReferralStats() {
             try {
                 const walletAddress = document.getElementById('walletAddress').value;
-                const response = await fetch(`/api/user/${walletAddress}`);
+                const response = await fetch(`${BACKEND_URL}/api/user/${walletAddress}`);
                 const data = await response.json();
 
                 document.getElementById('referralCount').textContent = data.referralCount;
@@ -448,7 +460,7 @@
         document.getElementById('checkEligibility').addEventListener('click', checkEligibility);
         document.getElementById('claimTokens').addEventListener('click', async () => {
             try {
-                const response = await fetch('http://localhost:3000/api/airdrop', {
+                const response = await fetch(`${BACKEND_URL}/api/airdrop`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -465,9 +477,11 @@
                         data.referralCode, 
                         data.amount
                     );
+                } else {
+                    showError(data.message || 'Gagal claim airdrop');
                 }
             } catch (error) {
-                showError(error.message);
+                showError('Koneksi ke backend gagal: ' + error.message);
             }
         });
     </script>
