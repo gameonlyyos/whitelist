@@ -325,110 +325,215 @@
             }
         }
 
-        // Fungsi untuk menampilkan error dengan aman
-        function showError(message) {
-            const errorElement = document.getElementById('errorMessage');
-            if (errorElement) {
-                errorElement.textContent = message;
-                errorElement.style.display = 'block';
-            } else {
-                console.error('Error Display Element Not Found:', message);
-                alert(message);
-            }
-        }
-
-        // Phantom Wallet Connection
-        const connectPhantomWallet = async () => {
-            console.log('Connecting to Phantom Wallet...');
-            if ('solana' in window) {
-                try {
-                    const response = await window.solana.connect();
-                    const publicKey = response.publicKey.toString();
-
-                    console.log('Wallet Public Key:', publicKey);
-
-                    // Update UI wallet status
-                    document.getElementById('walletStatus').innerHTML = `
-                        <div class="alert alert-success">
-                            Wallet Connected: ${publicKey.substring(0,6)}...${publicKey.substring(publicKey.length-6)}
-                        </div>
-                    `;
-
-                    // Aktifkan tombol claim
-                    document.getElementById('claimTokens').disabled = false;
-
-                    // Kirim request ke backend untuk validasi/registrasi
-                    console.log('Sending connect wallet request...');
-                    
-                    try {
-                        const connectResponse = await robustFetch(`${BACKEND_URL}/connect-wallet`, {
-                            method: 'POST',
-                            body: JSON.stringify({ 
-                                walletAddress: publicKey 
-                            })
-                        });
-
-                        console.log('Connect wallet response data:', connectResponse);
-
-                        if (connectResponse.success) {
-                            // Tambahkan logic tambahan jika perlu
-                            console.log('Wallet connected and registered');
-                            
-                            // Tampilkan referral code
-                            document.getElementById('referralCode').value = connectResponse.referralCode;
-                            
-                            // Cek eligibility otomatis
-                            await checkEligibility();
-                        } else {
-                            showError(connectResponse.message || 'Gagal registrasi wallet');
-                        }
-
-                    } catch (fetchError) {
-                        console.error('Fetch error FULL:', fetchError);
-                        
-                        // Tampilkan pesan error yang lebih informatif
-                        showError(`Koneksi Backend Gagal: ${fetchError.message}`);
-                        
-                        // Reset UI
-                        document.getElementById('walletStatus').innerHTML = `
-                            <div class="alert alert-danger">
-                                Koneksi Backend Gagal. Periksa koneksi internet atau server.
-                            </div>
-                        `;
-                        document.getElementById('claimTokens').disabled = true;
-                    }
-
-                } catch (err) {
-                    console.error('Wallet connection error FULL:', err);
-                    
-                    // Tampilkan pesan error yang lebih informatif
-                    showError(`Koneksi Wallet Gagal: ${err.message}`);
-                    
-                    // Reset UI
-                    document.getElementById('walletStatus').innerHTML = `
-                        <div class="alert alert-danger">
-                            Koneksi Wallet Gagal. Coba lagi.
-                        </div>
-                    `;
-                    document.getElementById('claimTokens').disabled = true;
-                }
-            } else {
-                showError('Phantom Wallet tidak terdeteksi. Silakan install.');
-            }
-        };
-
-        function safeGetElementById(id) {
+        // Robust Element Selection Function
+        function safeGetElement(id) {
             const element = document.getElementById(id);
             if (!element) {
                 console.warn(`Element with id '${id}' not found`);
+                return null;
             }
             return element;
         }
 
-        function safeSetInnerHTML(id, content) {
-            const element = safeGetElementById(id);
-            if (element) {
-                element.innerHTML = content;
+        // Improved Error Handling
+        function showError(message) {
+            // Try multiple error display methods
+            const errorElements = [
+                safeGetElement('errorMessage'),
+                safeGetElement('claimStatus'),
+                safeGetElement('eligibilityStatus')
+            ];
+
+            for (const element of errorElements) {
+                if (element) {
+                    element.innerHTML = `
+                        <div class="alert alert-danger">
+                            ${message}
+                        </div>
+                    `;
+                    return;
+                }
+            }
+
+            // Fallback to console error and alert
+            console.error('Error:', message);
+            alert(message);
+        }
+
+        // Enhanced Phantom Wallet Connection
+        async function connectPhantomWallet() {
+            try {
+                console.log('Connecting to Phantom Wallet...');
+
+                // Check if Phantom wallet is available
+                if (!window.solana || !window.solana.isPhantom) {
+                    throw new Error('Phantom Wallet not found. Please install it first.');
+                }
+
+                // Connect to Phantom wallet
+                const response = await window.solana.connect();
+                const publicKey = response.publicKey.toString();
+
+                console.log('Wallet Public Key:', publicKey);
+
+                // Store wallet public key globally
+                window.phantomWalletPublicKey = publicKey;
+
+                // Update UI elements safely
+                const connectButton = safeGetElement('connectWalletBtn');
+                const walletStatusElement = safeGetElement('walletStatus');
+
+                if (connectButton) {
+                    connectButton.disabled = true;
+                    connectButton.innerHTML = 'Wallet Connected';
+                }
+
+                if (walletStatusElement) {
+                    walletStatusElement.innerHTML = `
+                        <div class="alert alert-success">
+                            Wallet Connected: ${publicKey.slice(0, 10)}...${publicKey.slice(-10)}
+                        </div>
+                    `;
+                }
+
+                // Send wallet connection request to backend
+                const backendResponse = await robustFetch(`${BACKEND_URL}/connect-wallet`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        walletPublicKey: publicKey 
+                    })
+                });
+
+                if (backendResponse.success) {
+                    // Store referral code if provided
+                    window.referralCode = backendResponse.referralCode;
+                    
+                    // Update referral code display
+                    const referralCodeDisplay = safeGetElement('referralCodeDisplay');
+                    if (referralCodeDisplay && backendResponse.referralCode) {
+                        referralCodeDisplay.innerHTML = `
+                            <strong>Your Referral Code:</strong> 
+                            ${backendResponse.referralCode}
+                        `;
+                    }
+                } else {
+                    throw new Error(backendResponse.message || 'Wallet connection failed');
+                }
+
+            } catch (error) {
+                console.error('Wallet connection error FULL:', error);
+                showError(`Wallet Connection Failed: ${error.message}`);
+            }
+        }
+
+        // Copy Referral Code Function
+        function copyReferralCode() {
+            const referralCodeDisplay = safeGetElement('referralCodeDisplay');
+            
+            if (referralCodeDisplay) {
+                const referralCode = referralCodeDisplay.textContent.replace('Your Referral Code:', '').trim();
+                
+                if (referralCode) {
+                    navigator.clipboard.writeText(referralCode).then(() => {
+                        alert('Referral code copied to clipboard!');
+                    }).catch(err => {
+                        showError('Failed to copy referral code');
+                    });
+                } else {
+                    showError('No referral code available');
+                }
+            } else {
+                showError('Referral code display element not found');
+            }
+        }
+
+        // Enhanced Eligibility Check
+        async function checkEligibility() {
+            try {
+                // Check if wallet is connected
+                if (!window.phantomWalletPublicKey) {
+                    throw new Error('Connect your wallet first');
+                }
+
+                // Get eligibility status element safely
+                const eligibilityStatus = safeGetElement('eligibilityStatus');
+                const referralCodeDisplay = safeGetElement('referralCodeDisplay');
+                const claimTokensBtn = safeGetElement('claimTokens');
+
+                // Reset previous status
+                if (eligibilityStatus) {
+                    eligibilityStatus.innerHTML = 'Checking eligibility...';
+                }
+
+                // Send eligibility request
+                const eligibilityResponse = await robustFetch(`${BACKEND_URL}/check-eligibility`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        walletPublicKey: window.phantomWalletPublicKey
+                    })
+                });
+
+                // Handle eligibility response
+                if (eligibilityResponse.eligible) {
+                    // Update eligibility status
+                    if (eligibilityStatus) {
+                        eligibilityStatus.innerHTML = `
+                            <div class="alert alert-success">
+                                Eligible for Airdrop! 
+                                Claimable Amount: ${eligibilityResponse.amount} Tokens
+                            </div>
+                        `;
+                    }
+
+                    // Update referral code display
+                    if (referralCodeDisplay && eligibilityResponse.referralCode) {
+                        window.referralCode = eligibilityResponse.referralCode;
+                        referralCodeDisplay.innerHTML = `
+                            <strong>Your Referral Code:</strong> 
+                            ${eligibilityResponse.referralCode}
+                        `;
+                    }
+
+                    // Enable claim tokens button
+                    if (claimTokensBtn) {
+                        claimTokensBtn.disabled = false;
+                    }
+
+                    return eligibilityResponse;
+                } else {
+                    // Not eligible scenario
+                    if (eligibilityStatus) {
+                        eligibilityStatus.innerHTML = `
+                            <div class="alert alert-warning">
+                                Not Eligible for Airdrop
+                            </div>
+                        `;
+                    }
+
+                    // Disable claim tokens button
+                    if (claimTokensBtn) {
+                        claimTokensBtn.disabled = true;
+                    }
+
+                    return null;
+                }
+            } catch (error) {
+                // Comprehensive error handling
+                showError(`Eligibility Check Error: ${error.message}`);
+                
+                // Disable claim tokens button in case of error
+                const claimTokensBtn = safeGetElement('claimTokens');
+                if (claimTokensBtn) {
+                    claimTokensBtn.disabled = true;
+                }
+
+                return null;
             }
         }
 
@@ -439,6 +544,10 @@
                 if (!window.phantomWalletPublicKey) {
                     throw new Error('Please connect your Phantom Wallet first');
                 }
+
+                // Get DOM elements safely
+                const claimStatus = safeGetElement('claimStatus');
+                const claimTokensBtn = safeGetElement('claimTokens');
 
                 // Check eligibility before claiming
                 const eligibilityResponse = await checkEligibility();
@@ -463,119 +572,55 @@
 
                 // Handle claim response
                 if (claimResponse.success) {
-                    const claimStatus = document.getElementById('claimStatus');
-                    claimStatus.innerHTML = `
-                        <div class="alert alert-success">
-                            Successfully claimed ${claimResponse.amount} tokens! 
-                            Transaction Hash: ${claimResponse.txHash}
-                        </div>
-                    `;
+                    // Update claim status
+                    if (claimStatus) {
+                        claimStatus.innerHTML = `
+                            <div class="alert alert-success">
+                                Successfully claimed ${claimResponse.amount} tokens! 
+                                Transaction Hash: ${claimResponse.txHash}
+                            </div>
+                        `;
+                    }
                     
                     // Disable claim button after successful claim
-                    document.getElementById('claimTokens').disabled = true;
+                    if (claimTokensBtn) {
+                        claimTokensBtn.disabled = true;
+                        claimTokensBtn.textContent = 'Tokens Claimed';
+                    }
                 } else {
                     throw new Error(claimResponse.message || 'Token claim failed');
                 }
             } catch (error) {
+                // Comprehensive error handling
                 showError(`Token Claim Error: ${error.message}`);
-            }
-        }
-
-        // Enhanced Eligibility Check
-        async function checkEligibility() {
-            try {
-                // Check if wallet is connected
-                if (!window.phantomWalletPublicKey) {
-                    throw new Error('Connect your wallet first');
+                
+                // Disable claim tokens button in case of error
+                const claimTokensBtn = safeGetElement('claimTokens');
+                if (claimTokensBtn) {
+                    claimTokensBtn.disabled = true;
                 }
-
-                // Send eligibility request
-                const eligibilityResponse = await robustFetch(`${BACKEND_URL}/check-eligibility`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        walletPublicKey: window.phantomWalletPublicKey
-                    })
-                });
-
-                // Update UI with eligibility status
-                const eligibilityStatus = document.getElementById('eligibilityStatus');
-                const referralCodeDisplay = document.getElementById('referralCodeDisplay');
-
-                if (eligibilityResponse.eligible) {
-                    eligibilityStatus.innerHTML = `
-                        <div class="alert alert-success">
-                            Eligible for Airdrop! 
-                            Claimable Amount: ${eligibilityResponse.amount} Tokens
-                        </div>
-                    `;
-
-                    // Display referral code if available
-                    if (eligibilityResponse.referralCode) {
-                        window.referralCode = eligibilityResponse.referralCode;
-                        referralCodeDisplay.innerHTML = `
-                            <strong>Your Referral Code:</strong> 
-                            ${eligibilityResponse.referralCode}
-                        `;
-                    }
-
-                    return eligibilityResponse;
-                } else {
-                    eligibilityStatus.innerHTML = `
-                        <div class="alert alert-warning">
-                            Not Eligible for Airdrop
-                        </div>
-                    `;
-                    return null;
-                }
-            } catch (error) {
-                showError(`Eligibility Check Error: ${error.message}`);
-                return null;
             }
         }
 
-        // Copy Referral Code Function
-        function copyReferralCode() {
-            const referralCode = document.getElementById('referralCodeDisplay').textContent.trim();
-            
-            if (referralCode) {
-                navigator.clipboard.writeText(referralCode).then(() => {
-                    alert('Referral code copied to clipboard!');
-                }).catch(err => {
-                    showError('Failed to copy referral code');
-                });
-            } else {
-                showError('No referral code available');
-            }
-        }
-
-        // Event Listeners Setup
+        // Event Listeners Setup with Enhanced Safety
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM Loaded: Setting up event listeners');
 
-            // Safely add event listeners
-            const connectWalletBtn = document.getElementById('connectWalletBtn');
-            const checkEligibilityBtn = document.getElementById('checkEligibility');
-            const claimTokensBtn = document.getElementById('claimTokens');
-            const copyReferralCodeBtn = document.getElementById('copyReferralCode');
+            // Safely add event listeners with null checks
+            const setupEventListener = (elementId, eventType, handler) => {
+                const element = safeGetElement(elementId);
+                if (element) {
+                    element.addEventListener(eventType, handler);
+                } else {
+                    console.warn(`Could not find element with id: ${elementId}`);
+                }
+            };
 
-            if (connectWalletBtn) {
-                connectWalletBtn.addEventListener('click', connectPhantomWallet);
-            }
-
-            if (checkEligibilityBtn) {
-                checkEligibilityBtn.addEventListener('click', checkEligibility);
-            }
-
-            if (claimTokensBtn) {
-                claimTokensBtn.addEventListener('click', claimTokens);
-            }
-
-            if (copyReferralCodeBtn) {
-                copyReferralCodeBtn.addEventListener('click', copyReferralCode);
-            }
+            // Setup event listeners
+            setupEventListener('connectWalletBtn', 'click', connectPhantomWallet);
+            setupEventListener('checkEligibility', 'click', checkEligibility);
+            setupEventListener('claimTokens', 'click', claimTokens);
+            setupEventListener('copyReferralCode', 'click', copyReferralCode);
         });
     </script>
 </body>
