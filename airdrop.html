@@ -267,6 +267,67 @@
 
         console.log('Backend URL:', BACKEND_URL);
 
+        // Fungsi fetch yang lebih robust
+        async function robustFetch(url, options = {}) {
+            const defaultOptions = {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                timeout: 10000  // 10 detik timeout
+            };
+
+            const mergedOptions = { ...defaultOptions, ...options };
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), mergedOptions.timeout);
+
+                const response = await fetch(url, {
+                    ...mergedOptions,
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server error response:', errorText);
+                    throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('Fetch Error:', {
+                    message: error.message,
+                    name: error.name,
+                    url: url
+                });
+
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timed out. Periksa koneksi internet.');
+                }
+
+                if (error.message.includes('Failed to fetch')) {
+                    throw new Error('Tidak dapat terhubung ke server. Periksa koneksi internet atau status server.');
+                }
+
+                throw error;
+            }
+        }
+
+        // Fungsi untuk menampilkan error dengan aman
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+            } else {
+                console.error('Error Display Element Not Found:', message);
+                alert(message);
+            }
+        }
+
         // Phantom Wallet Connection
         const connectPhantomWallet = async () => {
             console.log('Connecting to Phantom Wallet...');
@@ -441,33 +502,22 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Pastikan semua elemen yang diperlukan ada
-            const requiredElements = [
-                'connectWalletBtn', 
-                'walletStatus', 
-                'referralCode', 
-                'claimTokens', 
-                'errorMessage'
-            ];
+            console.log('DOM Loaded: Setting up event listeners');
 
-            requiredElements.forEach(id => {
-                const element = safeGetElementById(id);
-                if (!element) {
-                    console.error(`Critical UI element missing: ${id}`);
-                }
-            });
-
-            // Tambahkan event listener dengan aman
-            const connectButton = safeGetElementById('connectWalletBtn');
+            // Pastikan tombol connect wallet ada
+            const connectButton = document.getElementById('connectWalletBtn');
             if (connectButton) {
                 connectButton.addEventListener('click', async () => {
                     try {
+                        console.log('Connect Wallet Button Clicked');
                         await connectPhantomWallet();
                     } catch (error) {
                         console.error('Connect Wallet Error:', error);
                         showError(`Koneksi Wallet Gagal: ${error.message}`);
                     }
                 });
+            } else {
+                console.error('Connect Wallet Button Not Found');
             }
         });
 
