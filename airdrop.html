@@ -255,26 +255,6 @@
             </div>
             <div id="errorMessage" class="error-message" style="display: none;"></div>
         </div>
-        
-        <!-- Tambahkan di bagian status airdrop -->
-        <div class="container mt-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Status Airdrop</h5>
-                    <p>Kode Referral: <span id="referralCodeDisplay" class="text-primary">-</span></p>
-                    <p id="eligibilityStatus" class="text-muted">Memeriksa eligibilitas...</p>
-                    
-                    <!-- Tombol Claim yang awalnya disabled -->
-                    <button 
-                        id="claimTokens" 
-                        class="btn btn-primary" 
-                        disabled
-                    >
-                        Claim Tokens
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
@@ -626,96 +606,6 @@
                 }
             } catch (error) {
                 showError('Koneksi ke backend gagal: ' + error.message);
-            }
-        });
-
-        const claimAirdrop = async () => {
-            try {
-                const claimButton = safeGetElementById('claimTokens');
-                if (!claimButton || claimButton.disabled) {
-                    throw new Error('Claim tidak diizinkan');
-                }
-
-                const publicKey = window.solana.publicKey.toString();
-                const response = await robustFetch(`${BACKEND_URL}/claim-airdrop`, {
-                    method: 'POST',
-                    body: JSON.stringify({ 
-                        publicKey: publicKey,
-                        referralCode: currentReferralCode  // Variabel global untuk menyimpan kode referral
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                console.log('Claim Airdrop Response:', response);
-
-                if (response.success) {
-                    safeSetInnerHTML('eligibilityStatus', `✅ Berhasil claim ${response.amount} SWAVE Tokens!`);
-                    claimButton.disabled = true;
-                    claimButton.textContent = 'Tokens Diklaim';
-                } else {
-                    throw new Error(response.message || 'Claim token gagal');
-                }
-            } catch (error) {
-                console.error('Claim Airdrop Error:', error);
-                safeSetInnerHTML('eligibilityStatus', `❌ Gagal claim: ${error.message}`);
-                showError(error.message);
-            }
-        };
-
-        // Variabel global untuk menyimpan kode referral
-        let currentReferralCode = null;
-
-        const checkEligibility = async (referralCode) => {
-            try {
-                const eligibilityResponse = await robustFetch(`${BACKEND_URL}/check-eligibility`, {
-                    method: 'POST',
-                    body: JSON.stringify({ 
-                        publicKey: window.solana.publicKey.toString(),
-                        referralCode 
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                console.log('Eligibility Response:', eligibilityResponse);
-
-                // Simpan kode referral
-                currentReferralCode = referralCode;
-
-                // Gunakan fungsi aman untuk set innerHTML
-                safeSetInnerHTML('referralCodeDisplay', referralCode || 'Tidak ada kode referral');
-                
-                const claimButton = safeGetElementById('claimTokens');
-                if (claimButton) {
-                    if (eligibilityResponse.eligible) {
-                        claimButton.disabled = false;
-                        claimButton.textContent = `Claim ${eligibilityResponse.amount} SWAVE`;
-                        safeSetInnerHTML('eligibilityStatus', 'Anda eligible untuk airdrop!');
-                    } else {
-                        claimButton.disabled = true;
-                        safeSetInnerHTML('eligibilityStatus', 'Anda belum eligible untuk airdrop');
-                    }
-                }
-
-                return eligibilityResponse;
-            } catch (error) {
-                console.error('Eligibility Check Error:', error);
-                
-                // Gunakan fungsi aman untuk set innerHTML
-                safeSetInnerHTML('eligibilityStatus', `Error: ${error.message}`);
-                
-                throw error;
-            }
-        };
-
-        // Setup event listener untuk tombol claim
-        document.addEventListener('DOMContentLoaded', () => {
-            const claimButton = safeGetElementById('claimTokens');
-            if (claimButton) {
-                claimButton.addEventListener('click', claimAirdrop);
             }
         });
     </script>
