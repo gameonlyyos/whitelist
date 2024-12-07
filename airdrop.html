@@ -214,11 +214,17 @@
                         <div class="col-md-8">
                             <h4>1. Connect Wallet</h4>
                             <p>Connect your Phantom Wallet to participate in the airdrop</p>
+                            <div id="walletStatus" class="mt-3"></div>
                         </div>
                         <div class="col-md-4 text-right">
                             <button id="connectWalletBtn" class="btn btn-primary">Connect Wallet</button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Error Message Section -->
+                <div class="step">
+                    <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
                 </div>
 
                 <!-- Eligibility Section -->
@@ -276,53 +282,74 @@
 
         console.log('Backend URL:', BACKEND_URL);
 
-        // Fungsi fetch yang lebih robust
+        // Robust Fetch Function with Improved Error Handling
         async function robustFetch(url, options = {}) {
-            const defaultOptions = {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                timeout: 10000  // 10 detik timeout
-            };
-
-            const mergedOptions = { ...defaultOptions, ...options };
-
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), mergedOptions.timeout);
+                // Ensure headers exist
+                options.headers = options.headers || {};
+                
+                // Add default headers
+                options.headers['Content-Type'] = options.headers['Content-Type'] || 'application/json';
 
-                const response = await fetch(url, {
-                    ...mergedOptions,
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Server error response:', errorText);
-                    throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                // Ensure body is stringified if it's an object
+                if (options.body && typeof options.body !== 'string') {
+                    options.body = JSON.stringify(options.body);
                 }
 
-                return await response.json();
+                // Perform fetch
+                const response = await fetch(url, {
+                    method: options.method || 'POST',
+                    headers: options.headers,
+                    body: options.body
+                });
+
+                // Parse response
+                const data = await response.json();
+
+                // Check for server-side errors
+                if (!response.ok || (data && data.success === false)) {
+                    console.error('Server error response:', data);
+                    throw new Error(data.message || 'Server request failed');
+                }
+
+                return data;
             } catch (error) {
                 console.error('Fetch Error:', {
                     message: error.message,
                     name: error.name,
                     url: url
                 });
-
-                if (error.name === 'AbortError') {
-                    throw new Error('Request timed out. Periksa koneksi internet.');
-                }
-
-                if (error.message.includes('Failed to fetch')) {
-                    throw new Error('Tidak dapat terhubung ke server. Periksa koneksi internet atau status server.');
-                }
-
                 throw error;
             }
+        }
+
+        // Enhanced Error Handling
+        function showError(message) {
+            // Try multiple error display methods
+            const errorElements = [
+                safeGetElement('errorMessage'),
+                safeGetElement('claimStatus'),
+                safeGetElement('eligibilityStatus')
+            ];
+
+            // Ensure message is a string
+            const errorMessage = message && message.toString ? message.toString() : 'An unknown error occurred';
+
+            for (const element of errorElements) {
+                if (element) {
+                    element.style.display = 'block';
+                    element.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>Error:</strong> ${errorMessage}
+                        </div>
+                    `;
+                    return;
+                }
+            }
+
+            // Fallback to console and alert
+            console.error('Error:', errorMessage);
+            alert(errorMessage);
         }
 
         // Robust Element Selection Function
@@ -333,31 +360,6 @@
                 return null;
             }
             return element;
-        }
-
-        // Improved Error Handling
-        function showError(message) {
-            // Try multiple error display methods
-            const errorElements = [
-                safeGetElement('errorMessage'),
-                safeGetElement('claimStatus'),
-                safeGetElement('eligibilityStatus')
-            ];
-
-            for (const element of errorElements) {
-                if (element) {
-                    element.innerHTML = `
-                        <div class="alert alert-danger">
-                            ${message}
-                        </div>
-                    `;
-                    return;
-                }
-            }
-
-            // Fallback to console error and alert
-            console.error('Error:', message);
-            alert(message);
         }
 
         // Enhanced Phantom Wallet Connection
@@ -379,15 +381,8 @@
                 // Store wallet public key globally
                 window.phantomWalletPublicKey = publicKey;
 
-                // Update UI elements safely
-                const connectButton = safeGetElement('connectWalletBtn');
+                // Update wallet status
                 const walletStatusElement = safeGetElement('walletStatus');
-
-                if (connectButton) {
-                    connectButton.disabled = true;
-                    connectButton.innerHTML = 'Wallet Connected';
-                }
-
                 if (walletStatusElement) {
                     walletStatusElement.innerHTML = `
                         <div class="alert alert-success">
@@ -396,17 +391,22 @@
                     `;
                 }
 
+                // Update connect wallet button
+                const connectButton = safeGetElement('connectWalletBtn');
+                if (connectButton) {
+                    connectButton.disabled = true;
+                    connectButton.textContent = 'Wallet Connected';
+                }
+
                 // Send wallet connection request to backend
                 const backendResponse = await robustFetch(`${BACKEND_URL}/connect-wallet`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        walletPublicKey: publicKey 
-                    })
+                    body: { 
+                        walletAddress: publicKey 
+                    }
                 });
 
+                // Handle backend response
                 if (backendResponse.success) {
                     // Store referral code if provided
                     window.referralCode = backendResponse.referralCode;
@@ -419,13 +419,28 @@
                             ${backendResponse.referralCode}
                         `;
                     }
+
+                    // Automatically check eligibility
+                    await checkEligibility();
                 } else {
                     throw new Error(backendResponse.message || 'Wallet connection failed');
                 }
 
             } catch (error) {
                 console.error('Wallet connection error FULL:', error);
+                
+                // Reset wallet connection
+                window.phantomWalletPublicKey = null;
+                
+                // Show error
                 showError(`Wallet Connection Failed: ${error.message}`);
+                
+                // Reset connect wallet button
+                const connectButton = safeGetElement('connectWalletBtn');
+                if (connectButton) {
+                    connectButton.disabled = false;
+                    connectButton.textContent = 'Connect Wallet';
+                }
             }
         }
 
@@ -471,12 +486,9 @@
                 // Send eligibility request
                 const eligibilityResponse = await robustFetch(`${BACKEND_URL}/check-eligibility`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
+                    body: {
                         walletPublicKey: window.phantomWalletPublicKey
-                    })
+                    }
                 });
 
                 // Handle eligibility response
@@ -557,17 +569,14 @@
 
                 // Prepare claim request
                 const claimRequest = {
-                    walletPublicKey: window.phantomWalletPublicKey,
+                    walletAddress: window.phantomWalletPublicKey,
                     referralCode: window.referralCode || ''
                 };
 
                 // Send claim request to backend
                 const claimResponse = await robustFetch(`${BACKEND_URL}/claim-tokens`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(claimRequest)
+                    body: claimRequest
                 });
 
                 // Handle claim response
@@ -577,7 +586,7 @@
                         claimStatus.innerHTML = `
                             <div class="alert alert-success">
                                 Successfully claimed ${claimResponse.amount} tokens! 
-                                Transaction Hash: ${claimResponse.txHash}
+                                Transaction Hash: ${claimResponse.txHash || 'N/A'}
                             </div>
                         `;
                     }
